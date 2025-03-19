@@ -1,0 +1,80 @@
+version: '3.8'
+
+networks:
+  rabbitmq_network:
+    name: rabbitmq_network
+    driver: bridge
+
+services:
+  rabbitmq:
+    image: rabbitmq:management
+    container_name: rabbitmq
+    networks:
+      - rabbitmq_network
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    restart: always
+
+  fastapi:
+    build:
+      context: .
+      dockerfile: app/Dockerfile
+    container_name: fastapi_service
+    networks:
+      - rabbitmq_network
+    ports:
+      - "8000:8000"
+    depends_on:
+      - rabbitmq
+      - ollama
+    volumes:
+      - shared_volume:/app/uploads
+    restart: always
+
+  worker:
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
+    container_name: translation_worker
+    networks:
+      - rabbitmq_network  
+    depends_on:
+      - rabbitmq
+      - ollama
+    volumes:
+      - shared_volume:/app/uploads
+    restart: always
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
+
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    networks:
+      - rabbitmq_network  
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./ollama:/root/.ollama 
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all # <-- Use ALL GPUs (change to 1 if you want just 1 GPU)
+              capabilities: [gpu]
+    environment:
+    - NVIDIA_VISIBLE_DEVICES=all  # <-- Expose all GPUs
+    - NVIDIA_DRIVER_CAPABILITIES=compute,utility  # <-- Enable full CUDA performance
+    restart: always
+
+volumes:
+  shared_volume:
+  rabbitmq_data:
