@@ -3,3 +3,4 @@ uvicorn
 pika  # For RabbitMQ
 requests
 python-multipart
+python-dotenv

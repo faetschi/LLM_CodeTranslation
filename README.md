@@ -1,10 +1,67 @@
 # Prototype for Code Translation with Large Language Models using Ollama
 
-🚀 Fast 
-💡 Modular 
-📈 Scalable
+This project is a **prototype system** that uses **LLMs (via Ollama)** to automatically translate C++ code into Java. 
+It is designed to be **modular** and **scalable**, using Docker and message queues to coordinate services and acting as a **proof-of-concept** for future enterprise adaptation.
 
-Docker for Deployment
+# Technologies Used
+- `Python` (FastAPI, pika, requests)
+- `Docker`
+- `FastAPI` (file upload & job dispatch)
+- `RabbitMQ` (message queue)
+- `Ollama` (LLM deployment)
+
+## 🔧 Components
+
+### 1. FastAPI Service
+- Exposes an HTTP API (`/translate/`)
+- Accepts `.cpp` file uploads
+- Sends the `file_id` to RabbitMQ for translation
+- Saves files to `/app/uploads/`
+
+### 2. RabbitMQ
+- Acts as a **message broker**
+- Holds queued translation jobs (`file_id`) until a worker is ready
+- Enables decoupling of the upload and translation process
+
+### 3. Worker Service
+- Written in Python
+- Listens to RabbitMQ for translation jobs
+- For each `file_id`:
+  - Reads the corresponding `.cpp` file
+  - Applies Pre-Processing 
+  - Sends it to the **Ollama LLM** with a prompt
+  - Saves the translated output as `.java` to `/app/translated/`
+
+### 4. Ollama (LLM)
+- Uses the `qwen2.5-coder:7b` model
+- Exposes an API at `http://ollama:11434/api/generate`
+- Accepts code based natural language prompts
+
+
+# How to use
+
+Build with Docker
+
+       docker compose build
+
+Download the model you want to use
+
+       docker exec -it ollama ollama pull qwen2.5-coder:7b
+
+Set the used model name in .env
+
+       LLM_MODEL=modelname
+       e.g. LLM_MODEL=qwen2.5-coder:7b
+
+Start services via docker
+
+       docker compose up
+
+
+Send file as POST Request using curl or Postman
+
+       curl -X POST http://localhost:8000/translate/ \ -F "file=@test.cpp"
+
 
 ## Architecture
 
@@ -20,8 +77,13 @@ Docker for Deployment
        ↓
 [ API Response ] → Returns translated Java file
 
+# WIP
+
+Translation -> Temp File -> Java Compiler drüberlaufen lassen -> Code + Errors in LLM geben zur Validation -> Output File in translated folder -> Final java compiler drüber laufen lassen
 
 ## Docker Commands
+
+docker compose up --build -d
 
 docker exec -it ollama sh
 
