@@ -68,11 +68,14 @@ def translate_code(file_id, original_filename):
         "system": SYSTEM_PROMPT,
         "prompt": (
             f'Translate the following complete C++ source file into clean Java 17. '
+            f"===== C++ CODE =====\n"
+            f"{cpp_code}\n\n"
             f'Ensure the structure is valid: all imports must be at the top, '
             f'helper classes and methods must be properly nested, and the code must form a valid Java 17 file.\n\n'
-            f'The main public class must be named "{pascal_case_name}" to match the filename. '
-            f"{cpp_hints}\n\n"
-            f'Output only valid Java code\n\n{cpp_code}'
+            f'The main public class must have the name "{pascal_case_name}" (the filename is "{pascal_case_name}" and the class name must match this name). '
+            f'Do not output any public class named "Main".\n\n'
+            f"These are hints found in the Java code:\n{cpp_hints}\n\n"
+            f'Output only valid Java code.\n'
         ),
         "stream": False
     }
@@ -96,7 +99,6 @@ def translate_code(file_id, original_filename):
         if success:
             shutil.copy(temp_java_file_path, final_java_file_path)
             logging.info(f"Compilation successful. File copied to {final_java_file_path}")
-            cleanup_class_files(temp_java_file_path)
             
 #####################################
 ### RETRY PHASE AFTER COMPILATION ###                    
@@ -119,27 +121,11 @@ def translate_code(file_id, original_filename):
                     f"2. Resolve any symbol errors (for example, methods that are missing or incorrectly referenced).\n"
                     f"3. Adjust access modifiers so that methods meant to be called externally are declared public.\n"
                     f"4. Correct any invalid method declarations, ensure constructors or methods have the proper return types if required.\n\n"
-                    #f"The Main public class must have the name \"{pascal_case_name}\" (the filename is \"{pascal_case_name}\" and must match this class name).\n"
+                    f"The main public class must have the name \"{pascal_case_name}\" (the filename is \"{pascal_case_name}\" and the class name must match this name).\n"
                     f"Return only the corrected Java 17 code with no explanations, comments, or markdown formatting."
                 ),
                 "stream": False
             }
-            
-            """ retry_payload = {
-                "model": MODEL_NAME,
-                "system": SYSTEM_PROMPT,
-                "prompt": (
-                    f'The following Java code fails to compile when saved as "{pascal_case_name}.java":\n\n'
-                    f'{java_code}\n\n'
-                    f'Compilation errors:\n{sanitized_log}\n\n'
-                    f'Please fix all issues so the Java code compiles successfully. '
-                    f'Ensure the structure is valid: all imports must be at the top, '
-                    f'helper classes and methods must be properly nested, and the code must form a valid Java 17 file.\n\n'
-                    f'The main public class must be named "{pascal_case_name}" to match the filename. '
-                    f'Do not include explanations, comments, or markdown. Return only clean, compilable Java 17 code.'
-                ),
-                "stream": False
-            } """
 
             retry_response = requests.post(OLLAMA_URL, json=retry_payload)
             retry_response.raise_for_status()
@@ -150,7 +136,8 @@ def translate_code(file_id, original_filename):
             ### POST PROCESSING ###
             #######################
             fixed_code = retry_match.group(1).strip() if retry_match else retry_result
-            fixed_code = re.sub(r'public\s+class\s+Main\b', f'public class {pascal_case_name}', fixed_code)
+            #fixed_code = re.sub(r'public\s+class\s+Main\b', f'public class {pascal_case_name}', fixed_code)
+            fixed_code = re.sub(r'\bpublic\s+(?:final\s+|abstract\s+)?class\s+Main\b', f'public class {pascal_case_name}', fixed_code)
 
             with open(final_java_file_path, "w") as output_file:
                 output_file.write(fixed_code)
@@ -160,11 +147,13 @@ def translate_code(file_id, original_filename):
             if retry_success:
                 shutil.copy(temp_java_file_path, final_java_file_path)
                 logging.info(f"Retry compilation succeeded. Final file copied to {final_java_file_path}")
+                ### CLEAN temp files ###
                 cleanup_class_files(temp_java_file_path)
                 cleanup_class_files(final_java_file_path)
             else:
                 failed_path = final_java_file_path.replace(".java", "_failed.java")
                 logging.error(f"Retry failed again. Output saved to {failed_path}\n{retry_log}")
+                ### CLEAN temp files ###
                 cleanup_class_files(temp_java_file_path)
                 cleanup_class_files(final_java_file_path)
                 
@@ -181,10 +170,14 @@ def translate_code(file_id, original_filename):
         
         
 def cleanup_class_files(java_file_path):
-    """Deletes any .class files generated by javac in the file's directory."""
+    """Deletes any .class files generated by javac in the file's directory,
+       in TEMP_DIR, and in TRANSLATED_DIR.
+       Also, deletes the .java file if it's in TEMP_DIR.
+    """
     base_path = os.path.splitext(java_file_path)[0]
     dir_path = os.path.dirname(java_file_path)
     
+    # Delete .class files in the same directory as the java_file_path.
     for filename in os.listdir(dir_path):
         if filename.startswith(os.path.basename(base_path)) and filename.endswith(".class"):
             try:
@@ -192,8 +185,18 @@ def cleanup_class_files(java_file_path):
                 logging.info(f"Removed leftover class file: {filename}")
             except Exception as e:
                 logging.warning(f"Could not remove class file {filename}: {e}")
+                
+    # Delete .class files in TEMP_DIR and TRANSLATED_DIR.
+    for directory in [TEMP_DIR, TRANSLATED_DIR]:
+        for filename in os.listdir(directory):
+            if filename.endswith(".class"):
+                try:
+                    os.remove(os.path.join(directory, filename))
+                    logging.info(f"Removed temporary class file from {directory}: {filename}")
+                except Exception as e:
+                    logging.warning(f"Could not remove temporary class file {filename} from {directory}: {e}")
 
-    # Only delete the .java file if it's in TEMP_DIR
+    # Only delete the .java file if it's in TEMP_DIR.
     if TEMP_DIR in java_file_path:
         try:
             if os.path.exists(java_file_path):
@@ -201,6 +204,7 @@ def cleanup_class_files(java_file_path):
                 logging.info(f"Removed temporary Java file: {os.path.basename(java_file_path)}")
         except Exception as e:
             logging.warning(f"Could not remove temporary Java file: {java_file_path} — {e}")
+
             
 ######################
 ### HELPER METHODS ###                    
