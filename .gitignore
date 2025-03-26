@@ -1,1 +1,6 @@
-/ollama/
+/ollama/*
+!/ollama/.gitkeep
+/app/temp/*
+!/temp/.gitkeep
+/app/translated/*
+!/translated/.gitkeep

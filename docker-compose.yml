@@ -1,5 +1,3 @@
-version: '3.8'
-
 networks:
   rabbitmq_network:
     name: rabbitmq_network
@@ -32,12 +30,14 @@ services:
       - ollama
     volumes:
       - shared_volume:/app/uploads
+      - ./app/translated:/app/translated
+      - ./app/temp:/app/temp
     restart: always
 
-  worker:
+  translation_worker:
     build:
       context: .
-      dockerfile: worker/Dockerfile
+      dockerfile: translation_worker/Dockerfile
     container_name: translation_worker
     networks:
       - rabbitmq_network  
@@ -46,7 +46,11 @@ services:
       - ollama
     volumes:
       - shared_volume:/app/uploads
+      - ./app/translated:/app/translated
+      - ./app/temp:/app/temp
     restart: always
+    env_file:
+      - .env
     deploy:
       resources:
         reservations:
@@ -71,9 +75,24 @@ services:
               count: all # <-- Use ALL GPUs (change to 1 if you want just 1 GPU)
               capabilities: [gpu]
     environment:
+    - OLLAMA_KEEP_ALIVE=-1  # Keeps the model in memory indefinitely
+    - OLLAMA_MODEL=${LLM_MODEL}  # Comma-separated model list (your .env)
     - NVIDIA_VISIBLE_DEVICES=all  # <-- Expose all GPUs
     - NVIDIA_DRIVER_CAPABILITIES=compute,utility  # <-- Enable full CUDA performance
     restart: always
+
+  model-preloader:
+    build:
+      context: ./model_loader
+    container_name: model_preloader
+    depends_on:
+      - ollama
+    networks:
+      - rabbitmq_network
+    env_file:
+      - .env
+    environment:
+      - OLLAMA_URL=http://ollama:11434
 
 volumes:
   shared_volume:
