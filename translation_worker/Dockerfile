@@ -9,11 +9,21 @@ COPY ../requirements.txt .
 
 ENV PYTHONUNBUFFERED=1
 
-# Install Java 17 and other required tools
+# Install Java 17, wget, unzip, and other required tools
 RUN apt-get update && \
-    apt-get install -y openjdk-17-jdk curl && \
+    apt-get install -y openjdk-17-jdk curl wget unzip && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+
+# Install PMD for static analysis 
+ENV PMD_VERSION=7.11.0
+RUN wget https://github.com/pmd/pmd/releases/download/pmd_releases%2F${PMD_VERSION}/pmd-dist-${PMD_VERSION}-bin.zip && \
+    unzip pmd-dist-${PMD_VERSION}-bin.zip && \
+    rm pmd-dist-${PMD_VERSION}-bin.zip && \
+    mv pmd-bin-${PMD_VERSION} /opt/pmd
+
+# Add PMD to PATH
+ENV PATH="/opt/pmd/bin:${PATH}"
 
 RUN pip install --no-cache-dir -r requirements.txt
 
