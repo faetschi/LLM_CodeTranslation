@@ -4,11 +4,11 @@ This project is a **prototype system** that uses **LLMs (via Ollama)** to automa
 It is designed to be **modular** and **scalable**, using Docker and message queues to coordinate services and acting as a **proof-of-concept** for future enterprise adaptation.
 
 # Technologies Used
-- `Python` (FastAPI, pika, requests)
+- `Python`
 - `Docker`
-- `FastAPI` (file upload & job dispatch)
-- `RabbitMQ` (message queue)
-- `Ollama` (LLM deployment)
+- [`FastAPI`](https://fastapi.tiangolo.com/)
+- [`RabbitMQ`](https://www.rabbitmq.com/)
+- [`Ollama`](https://ollama.com/)
 
 ## 🔧 Components
 
@@ -42,25 +42,25 @@ It is designed to be **modular** and **scalable**, using Docker and message queu
 
 Build with Docker
 
-       docker compose build
+    docker compose build
 
 Download the model you want to use
 
-       docker exec -it ollama ollama pull qwen2.5-coder:7b
+    docker exec -it ollama ollama pull qwen2.5-coder:7b
 
 Set the used model name in .env
 
-       LLM_MODEL=modelname
-       e.g. LLM_MODEL=qwen2.5-coder:7b
+    LLM_MODEL=modelname
+    e.g. LLM_MODEL=qwen2.5-coder:7b
 
 Start services via docker
 
-       docker compose up
+    docker compose up
 
 
 Send file as POST Request using curl or Postman
 
-       curl -X POST http://localhost:8000/translate/ \ -F "file=@test.cpp"
+    curl -X POST http://localhost:8000/translate/ \ -F "file=@test.cpp"
 
 
 ## Architecture
