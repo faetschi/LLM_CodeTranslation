@@ -4,6 +4,29 @@ networks:
     driver: bridge
 
 services:
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    networks:
+      - rabbitmq_network  
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./ollama:/root/.ollama 
+    environment:
+    - OLLAMA_KEEP_ALIVE=-1  # Keeps the model in memory indefinitely
+    - OLLAMA_MODEL=${LLM_MODEL}  # Comma-separated model list (your .env)
+    - NVIDIA_VISIBLE_DEVICES=all  # <-- Expose all GPUs
+    - NVIDIA_DRIVER_CAPABILITIES=compute,utility  # <-- Enable full CUDA performance
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all # <-- Use ALL GPUs (change to 1 if you want just 1 GPU)
+              capabilities: [gpu]
+    restart: always
+    
   rabbitmq:
     image: rabbitmq:management
     container_name: rabbitmq
@@ -48,6 +71,7 @@ services:
       - shared_volume:/fastapi/uploads
       - ./translation_worker/translated:/translation_worker/translated
       - ./translation_worker/temp:/translation_worker/temp
+      - ./translation_worker/profiles:/translation_worker/profiles
     restart: always
     env_file:
       - .env
@@ -58,28 +82,30 @@ services:
             - driver: nvidia
               capabilities: [gpu]
 
-  ollama:
-    image: ollama/ollama
-    container_name: ollama
+  test_worker:
+    build:
+      context: .
+      dockerfile: test_worker/Dockerfile
+    container_name: test_worker
     networks:
-      - rabbitmq_network  
-    ports:
-      - "11434:11434"
+      - rabbitmq_network
+    depends_on:
+      - rabbitmq
+      - ollama
     volumes:
-      - ./ollama:/root/.ollama 
-    environment:
-    - OLLAMA_KEEP_ALIVE=-1  # Keeps the model in memory indefinitely
-    - OLLAMA_MODEL=${LLM_MODEL}  # Comma-separated model list (your .env)
-    - NVIDIA_VISIBLE_DEVICES=all  # <-- Expose all GPUs
-    - NVIDIA_DRIVER_CAPABILITIES=compute,utility  # <-- Enable full CUDA performance
+      - shared_volume:/fastapi/uploads
+      - ./translation_worker/translated:/translation_worker/translated
+      - ./test_worker:/test_worker 
+      - ./tests:/tests
+    restart: always
+    env_file:
+      - .env
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              count: all # <-- Use ALL GPUs (change to 1 if you want just 1 GPU)
               capabilities: [gpu]
-    restart: always
 
   model-preloader:
     build:

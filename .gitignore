@@ -5,3 +5,7 @@
 /translation_worker/translated/*
 /translation_worker/uploads/*
 !/translated/.gitkeep
+/translation_worker/translation_worker.iml
+/translation_worker/profiles/__pycache__
+/translation_worker/out
+/translation_worker/.idea
