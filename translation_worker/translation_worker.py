@@ -20,9 +20,9 @@ logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 SYSTEM_PROMPT = os.getenv("SYSTEM_PROMPT")
 MODEL_NAME = os.getenv("LLM_MODEL")
 
-UPLOAD_DIR = "/app/uploads/"
-TEMP_DIR = "/app/temp/"
-TRANSLATED_DIR = "/app/translated/"
+UPLOAD_DIR = "/translation_worker/uploads/"
+TEMP_DIR = "/translation_worker/temp/"
+TRANSLATED_DIR = "/translation_worker/translated/"
 OLLAMA_URL = "http://ollama:11434/api/generate"
 
 # Ensure directories exist

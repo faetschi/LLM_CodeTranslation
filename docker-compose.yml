@@ -19,7 +19,7 @@ services:
   fastapi:
     build:
       context: .
-      dockerfile: app/Dockerfile
+      dockerfile: fastapi/Dockerfile
     container_name: fastapi_service
     networks:
       - rabbitmq_network
@@ -29,9 +29,9 @@ services:
       - rabbitmq
       - ollama
     volumes:
-      - shared_volume:/app/uploads
-      - ./app/translated:/app/translated
-      - ./app/temp:/app/temp
+      - shared_volume:/translation_worker/uploads
+      - ./translation_worker/translated:/translation_worker/translated
+      - ./translation_worker/temp:/translation_worker/temp
     restart: always
 
   translation_worker:
@@ -45,9 +45,9 @@ services:
       - rabbitmq
       - ollama
     volumes:
-      - shared_volume:/app/uploads
-      - ./app/translated:/app/translated
-      - ./app/temp:/app/temp
+      - shared_volume:/translation_worker/uploads
+      - ./translation_worker/translated:/translation_worker/translated
+      - ./translation_worker/temp:/translation_worker/temp
     restart: always
     env_file:
       - .env
@@ -67,6 +67,11 @@ services:
       - "11434:11434"
     volumes:
       - ./ollama:/root/.ollama 
+    environment:
+    - OLLAMA_KEEP_ALIVE=-1  # Keeps the model in memory indefinitely
+    - OLLAMA_MODEL=${LLM_MODEL}  # Comma-separated model list (your .env)
+    - NVIDIA_VISIBLE_DEVICES=all  # <-- Expose all GPUs
+    - NVIDIA_DRIVER_CAPABILITIES=compute,utility  # <-- Enable full CUDA performance
     deploy:
       resources:
         reservations:
@@ -74,11 +79,6 @@ services:
             - driver: nvidia
               count: all # <-- Use ALL GPUs (change to 1 if you want just 1 GPU)
               capabilities: [gpu]
-    environment:
-    - OLLAMA_KEEP_ALIVE=-1  # Keeps the model in memory indefinitely
-    - OLLAMA_MODEL=${LLM_MODEL}  # Comma-separated model list (your .env)
-    - NVIDIA_VISIBLE_DEVICES=all  # <-- Expose all GPUs
-    - NVIDIA_DRIVER_CAPABILITIES=compute,utility  # <-- Enable full CUDA performance
     restart: always
 
   model-preloader:

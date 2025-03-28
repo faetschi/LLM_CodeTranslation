@@ -1,6 +1,7 @@
 /ollama/*
 !/ollama/.gitkeep
-/app/temp/*
+/translation_worker/temp/*
 !/temp/.gitkeep
-/app/translated/*
+/translation_worker/translated/*
+/translation_worker/uploads/*
 !/translated/.gitkeep

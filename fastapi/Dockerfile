@@ -3,12 +3,12 @@ FROM nvidia/cuda:12.4.1-devel-ubuntu22.04
 
 FROM python:3.11-slim
 
-WORKDIR /app
+WORKDIR /fastapi
 
 COPY ../requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app/server.py .
+COPY fastapi/server.py .
 
-CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "server:fastapi", "--host", "0.0.0.0", "--port", "8000"]
