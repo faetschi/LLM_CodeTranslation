@@ -29,7 +29,7 @@ services:
       - rabbitmq
       - ollama
     volumes:
-      - shared_volume:/translation_worker/uploads
+      - shared_volume:/fastapi/uploads
       - ./translation_worker/translated:/translation_worker/translated
       - ./translation_worker/temp:/translation_worker/temp
     restart: always
@@ -45,7 +45,7 @@ services:
       - rabbitmq
       - ollama
     volumes:
-      - shared_volume:/translation_worker/uploads
+      - shared_volume:/fastapi/uploads
       - ./translation_worker/translated:/translation_worker/translated
       - ./translation_worker/temp:/translation_worker/temp
     restart: always

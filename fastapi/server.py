@@ -7,7 +7,7 @@ import json
 
 fastapi = FastAPI()
 
-UPLOAD_DIR = "/translation_worker/uploads/"
+UPLOAD_DIR = "/fastapi/uploads/"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 def send_to_queue(file_id, original_filename):
