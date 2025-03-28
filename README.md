@@ -65,6 +65,7 @@ Send file as POST Request using curl or Postman
 
 ## Architecture
 
+```plaintext
 [ User/API Request ]
        ↓
 [ FastAPI Service ]  → Handles authentication, rate limiting, and API requests (users upload C++ files)
@@ -76,6 +77,7 @@ Send file as POST Request using curl or Postman
 [ Storage (Local)] → Saves translated Java files (prototype: local storage, future: cloud storage)
        ↓
 [ API Response ] → Returns translated Java file
+```
 
 # WIP
 
