@@ -5,9 +5,9 @@ import shutil
 import os
 import json
 
-app = FastAPI()
+fastapi = FastAPI()
 
-UPLOAD_DIR = "/app/uploads/"
+UPLOAD_DIR = "/translation_worker/uploads/"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 def send_to_queue(file_id, original_filename):
@@ -44,7 +44,7 @@ def send_to_queue(file_id, original_filename):
     except Exception as e:
         print(f"❌  ERROR: Failed to send job {file_id} to RabbitMQ: {str(e)}")
 
-@app.post("/translate/")
+@fastapi.post("/translate/")
 async def translate_file(file: UploadFile = File(...)):
     """Handles file upload & immediately sends task to RabbitMQ."""
 
