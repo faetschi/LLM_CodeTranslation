@@ -12,7 +12,7 @@ services:
     ports:
       - "11434:11434"
     volumes:
-      - ./ollama:/root/.ollama 
+      - ./docker/ollama:/root/.ollama
     environment:
     - OLLAMA_KEEP_ALIVE=-1  # Keeps the model in memory indefinitely
     - OLLAMA_MODEL=${LLM_MODEL}  # Comma-separated model list (your .env)
@@ -41,7 +41,7 @@ services:
 
   fastapi:
     build:
-      context: .
+      context: ./docker
       dockerfile: fastapi/Dockerfile
     container_name: fastapi_service
     networks:
@@ -53,13 +53,13 @@ services:
       - ollama
     volumes:
       - shared_volume:/fastapi/uploads
-      - ./translation_worker/translated:/translation_worker/translated
-      - ./translation_worker/temp:/translation_worker/temp
+      - ./docker/translation_worker/translated:/translation_worker/translated
+      - ./docker/translation_worker/temp:/translation_worker/temp
     restart: always
 
   translation_worker:
     build:
-      context: .
+      context: ./docker
       dockerfile: translation_worker/Dockerfile
     container_name: translation_worker
     networks:
@@ -69,9 +69,9 @@ services:
       - ollama
     volumes:
       - shared_volume:/fastapi/uploads
-      - ./translation_worker/translated:/translation_worker/translated
-      - ./translation_worker/temp:/translation_worker/temp
-      - ./translation_worker/profiles:/translation_worker/profiles
+      - ./docker/translation_worker/temp:/translation_worker/temp
+      - ./docker/translation_worker/profiles:/translation_worker/profiles
+      - ./output:/output
     restart: always
     env_file:
       - .env
@@ -84,7 +84,7 @@ services:
 
   test_worker:
     build:
-      context: .
+      context: ./docker
       dockerfile: test_worker/Dockerfile
     container_name: test_worker
     networks:
@@ -94,9 +94,9 @@ services:
       - ollama
     volumes:
       - shared_volume:/fastapi/uploads
-      - ./translation_worker/translated:/translation_worker/translated
-      - ./test_worker:/test_worker 
-      - ./tests:/tests
+      - ./docker/translation_worker/translated:/translation_worker/translated
+      - ./docker/tests:/tests
+      - ./output:/output
     restart: always
     env_file:
       - .env
@@ -109,7 +109,8 @@ services:
 
   model-preloader:
     build:
-      context: ./model_loader
+      context: ./docker
+      dockerfile: model_loader/Dockerfile
     container_name: model_preloader
     depends_on:
       - ollama

@@ -31,7 +31,7 @@ RUN pip install wordninja
 
 RUN pip install stringcase
 
-COPY translation_worker/translation_worker.py .
+COPY translation_worker ./translation_worker
 
-# -u for unbuffered output
-CMD ["python", "-u", "translation_worker.py"]
+# -u for unbuffered output, -m to run as module
+CMD ["python", "-u", "-m", "translation_worker.translation_worker"]

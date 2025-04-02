@@ -22,7 +22,7 @@ MODEL_NAME = os.getenv("LLM_MODEL")
 
 UPLOAD_DIR = "/fastapi/uploads/"
 TEMP_DIR = "/translation_worker/temp/"
-TRANSLATED_DIR = "/translation_worker/translated/"
+TRANSLATED_DIR = "/output/"
 OLLAMA_URL = "http://ollama:11434/api/generate"
 
 # Ensure directories exist
@@ -214,7 +214,7 @@ def notify_test_generation_worker(pascal_case_name):
         # Create the message to notify the Test Generation Worker
         message = {
             "action": "generate_test",
-            "java_file": f"{TRANSLATED_DIR}/{pascal_case_name}/{pascal_case_name}.java"  # Full path
+            "java_file": f"{TRANSLATED_DIR}{pascal_case_name}/{pascal_case_name}.java"  # Full path
         }
 
         # Send the message to the test_generation_queue
@@ -392,6 +392,10 @@ def sanitize_log(log_text, max_lines=50):
     return '\n'.join(log_text.splitlines()[:max_lines])
 
 ### GIVE SPECIFIC HINTS ON CPP FILES ###     
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 from profiles.cpp_patterns import detect_cpp_patterns
               
 def extract_cpp_hints(cpp_code: str) -> str:

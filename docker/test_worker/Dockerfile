@@ -32,7 +32,7 @@ ENV PATH="/opt/pmd/bin:${PATH}"
 # Install necessary Python dependencies from requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the test worker script
+# Copy the test worker
 COPY test_worker/test_worker.py .
 
 # Run the worker
