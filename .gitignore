@@ -6,7 +6,7 @@ output/*
 !output/.gitkeep
 
 # Ollama
-docker/ollama/*
+docker/ollama/**
 !docker/ollama/.gitkeep
 
 # Translation worker
