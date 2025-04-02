@@ -1,5 +1,5 @@
 # General
-/.idea/*
+.idea/*
 
 # Output
 output/*
@@ -15,5 +15,6 @@ docker/translation_worker/temp/*
 docker/translation_worker/uploads/*
 !/translated/.gitkeep
 docker/translation_worker/translation_worker.iml
-docker/translation_worker/profiles/__pycache__
+docker/translation_worker/profiles/__pycache__/*
+!docker/translation_worker/profiles/__pycache__/.gitkeep
 docker/translation_worker/.idea
