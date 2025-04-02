@@ -1,6 +1,7 @@
 # General
 .idea/*
 .idea/
+todo.md
 
 # Output
 output/*
