@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 # Environment variables from .env
 MODEL_NAME = os.getenv("LLM_MODEL")
 OLLAMA_URL = "http://ollama:11434/api/generate"
-TESTS_DIR = "/test_worker/temp/"
+TESTS_DIR = "/test_worker/tests/"
 
 # Ensure the directory for tests exists
 os.makedirs(TESTS_DIR, exist_ok=True)
@@ -100,7 +100,7 @@ def start_test_worker():
                 action = message.get('action')
 
                 if action == 'generate_test':
-                    java_file = message.get('java_file')
+                    java_file = message.get('java_file_path')
                     if java_file:
                         logging.info(f"Received request to generate test for: {java_file}")
                         test_file = generate_integration_test(java_file)
@@ -122,7 +122,7 @@ def start_test_worker():
                 ch.basic_ack(delivery_tag=method.delivery_tag)
 
         # Start consuming messages from the queue
-        logging.info("Worker is waiting for tasks...")
+        logging.info("Test Generation Worker is waiting for tasks...")
         channel.basic_consume(queue='test_generation_queue', on_message_callback=callback)
         channel.start_consuming()
 
