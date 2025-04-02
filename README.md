@@ -6,11 +6,48 @@ It is designed to be **modular** and **scalable**, using Docker and message queu
 ## 🚀 Technologies Used
 
 - `Python`
-- `Docker`
-- [`FastAPI`](https://fastapi.tiangolo.com/)
-- [`RabbitMQ`](https://www.rabbitmq.com/)
-- [`Ollama`](https://ollama.com/)
-- `javac`, `PMD`
+- `Docker` - Containerization of services
+- [`FastAPI`](https://fastapi.tiangolo.com/) - REST APIs
+- [`RabbitMQ`](https://www.rabbitmq.com/) - Message broker for decoupling and task queueing
+- [`Ollama`](https://ollama.com/) -  Local LLM engine
+- `javac`, `PMD` - Java compiler and static code analysis tool for validation
+
+## 📦 How to Use
+
+1. Build the containers
+
+    ```bash
+    docker compose build
+    ```
+
+2. Pull your preferred model
+
+    ```bash
+    docker exec -it ollama ollama pull qwen2.5-coder:7b
+    ```
+
+    Set the model in `.env`:
+
+    ```bash
+    LLM_MODEL=qwen2.5-coder:7b
+    ```
+
+3. Start all services
+
+    ```bash
+    docker compose up
+    ```
+
+4. Send a C++ file via `HTTP request`
+
+    ```bash
+    curl -X POST http://localhost:8000/translate/ \
+      -F "file=@path/to/your/test.cpp"
+    ```
+
+## 🧱 System Architecture
+
+<img src="./docs/svg/architecture.svg" alt="System Architecture" style="max-width: 100%; width: 60%; height: auto;" />
 
 ## 🔧 Components
 
@@ -41,59 +78,28 @@ It is designed to be **modular** and **scalable**, using Docker and message queu
 - Returns Java code translations
 - Can be swapped with other LLMs that support local inference
 
+## TODO Command-Line Options:
 
-## 📦 How to Use
+| Option | Description |
+|--------|-------------|
+|-h, --help | |
+| | |
+|--verbose | Show log output in console |
 
-### 1. **Build the containers**
+## TODO Contents
 
-```bash
-docker compose build
 ```
-
-### 2. **Pull your preferred model**
-
-```bash
-docker exec -it ollama ollama pull qwen2.5-coder:7b
-```
-**Set the model in `.env`:**
-
-```bash
-LLM_MODEL=qwen2.5-coder:7b
-```
-
-### 3. **Start all services**
-
-```bash
-docker compose up
-```
-
-### 4. **Send a C++ file via HTTP request**
-
-```bash
-curl -X POST http://localhost:8000/translate/ \
-  -F "file=@path/to/your/test.cpp"
-```
-
-## 🧱 System Architecture
-
-```plaintext
-[ User/API Request ]
-       ↓
-[ FastAPI Service ] 
-   ├─ Receives .cpp file uploads
-       ↓
-[ RabbitMQ ]
-   ├─ Queues file_id translation task
-       ↓
-[ Translation Worker ]
-   ├─ Preprocess C++ + extract hints
-   ├─ Send prompt to LLM (Ollama)
-   ├─ Compile Java file
-   ├─ Retry with compile + PMD feedback
-   └─ Save final output in /translated/
-       ↓
-[ Java File Output ]
-
+.
+├── fastapi
+├── model_loader
+├── ollama
+├── test_worker           # Service for generating tests
+├── tests
+├── translation_worker    # Main translation service
+│   └── /translated       
+│   └──
+├── 
+├──
 ```
 
 ## 🛠 Helpful Docker Commands
