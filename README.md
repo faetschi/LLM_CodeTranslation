@@ -102,22 +102,24 @@ It is designed to be **modular** and **scalable**, using Docker and message queu
 ├──
 ```
 
-## 🛠 Helpful Docker Commands
+## 🛠 Debugging
 
-```bash
-docker compose up --build -d
-docker logs translation_worker --follow
-docker exec -it ollama sh
-ollama list
-```
+- Helpful Docker Commands
 
-Test LLM directly:
+  ```bash
+  docker compose up --build -d              # detached mode
+  docker logs translation_worker --follow   # show logs of service
+  docker exec -it ollama sh
+  ollama list                               # list available models
+  ```
 
-```bash
-curl -s -X POST http://localhost:11434/api/generate \
-  -H "Content-Type: application/json" \
-  -d '{"model": "qwen2.5-coder:7b", "prompt": "Translate this code...", "stream": false}'
-```
+- Test LLM directly:
+
+  ```bash
+  curl -s -X POST http://localhost:11434/api/generate \
+    -H "Content-Type: application/json" \
+    -d '{"model": "qwen2.5-coder:7b", "prompt": "What is 1 + 1?", "stream": false}'
+  ```
        
 ## 📚 Future Improvements (WIP)
 
