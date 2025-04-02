@@ -1,6 +1,3 @@
-# Use the NVIDIA CUDA base image with the full toolkit (devel)
-FROM nvidia/cuda:12.4.1-devel-ubuntu22.04
-
 # Use Python 3.11 slim image as base
 FROM python:3.11-slim
 
@@ -19,15 +16,25 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Install PMD for static analysis 
-ENV PMD_VERSION=7.11.0
-RUN wget https://github.com/pmd/pmd/releases/download/pmd_releases%2F${PMD_VERSION}/pmd-dist-${PMD_VERSION}-bin.zip && \
-    unzip pmd-dist-${PMD_VERSION}-bin.zip && \
-    rm pmd-dist-${PMD_VERSION}-bin.zip && \
-    mv pmd-bin-${PMD_VERSION} /opt/pmd
+# Install JUnit 5 Libraries
+# Define versions (use recent stable versions)
+ENV JUNIT_PLATFORM_VERSION=1.10.2
+ENV JUNIT_JUPITER_VERSION=5.10.2
+ENV JUNIT_LIB_DIR_PATH=/app/libs
 
-# Add PMD to PATH
-ENV PATH="/opt/pmd/bin:${PATH}"
+# Create the directory and download JUnit JARs needed for compilation
+RUN mkdir -p ${JUNIT_LIB_DIR_PATH} && \
+    cd ${JUNIT_LIB_DIR_PATH} && \
+    wget https://repo1.maven.org/maven2/org/junit/platform/junit-platform-commons/${JUNIT_PLATFORM_VERSION}/junit-platform-commons-${JUNIT_PLATFORM_VERSION}.jar && \
+    wget https://repo1.maven.org/maven2/org/junit/jupiter/junit-jupiter-api/${JUNIT_JUPITER_VERSION}/junit-jupiter-api-${JUNIT_JUPITER_VERSION}.jar && \
+    # Add other JUnit JARs if needed by generated tests (e.g., params, engine - though engine might only be needed for running)
+    # wget https://repo1.maven.org/maven2/org/junit/jupiter/junit-jupiter-params/${JUNIT_JUPITER_VERSION}/junit-jupiter-params-${JUNIT_JUPITER_VERSION}.jar && \
+    # wget https://repo1.maven.org/maven2/org/opentest4j/opentest4j/1.3.0/opentest4j-1.3.0.jar && \
+    # wget https://repo1.maven.org/maven2/org/apiguardian/apiguardian-api/1.1.2/apiguardian-api-1.1.2.jar && \
+    cd /test_worker # Return to workdir
+
+# Set Default JUNIT_LIB_DIR Env Var
+ENV JUNIT_LIB_DIR=${JUNIT_LIB_DIR_PATH}
 
 # Install necessary Python dependencies from requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
