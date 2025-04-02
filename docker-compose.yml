@@ -120,6 +120,7 @@ services:
       - .env
     environment:
       - OLLAMA_URL=http://ollama:11434
+      - OLLAMA_URL=http://ollama:11434
 
 volumes:
   shared_volume:

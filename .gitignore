@@ -1,5 +1,6 @@
 # General
 .idea/*
+.idea/
 
 # Output
 output/*
