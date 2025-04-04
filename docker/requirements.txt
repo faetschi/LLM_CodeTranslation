@@ -1,6 +1,6 @@
 fastapi
 uvicorn
-pika  # For RabbitMQ
+pika
 requests
 python-multipart
 python-dotenv

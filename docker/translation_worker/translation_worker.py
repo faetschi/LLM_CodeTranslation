@@ -50,13 +50,13 @@ def connect_to_rabbitmq():
     raise Exception("Failed to connect to RabbitMQ after multiple retries.")
 
 # --- Core Translation Logic ---
-# --- Core Translation Logic ---
-def translate_code(file_id, original_filename):
+def translate_code(file_id, original_filename, custom_prompt=None, headers=None):
+    headers = headers or {}
     """ Translates a C++ file to Java, attempting compilation and using an LLM
     to iteratively fix errors up to MAX_RETRIES times. Notifies test worker
     on completion (success or failure). """
 
-    cpp_file_path = os.path.join(UPLOAD_DIR, f"{file_id}.cpp")
+    cpp_file_path = os.path.join(UPLOAD_DIR, original_filename)
     base_name = os.path.splitext(original_filename)[0]
     pascal_case_name = to_pascal_case(base_name)
 
@@ -75,12 +75,7 @@ def translate_code(file_id, original_filename):
     try:
         if not os.path.exists(cpp_file_path):
             logging.error(f"C++ source file {cpp_file_path} not found for job {file_id}!")
-            # No file to translate, maybe notify failure immediately?
-            # Or just return, depending on desired behavior for missing source.
-            # Let's notify failure here for consistency.
-            output_file_path = None # No relevant Java file
-            # The 'finally' block will handle the notification based on 'success' remaining False.
-            return # Exit early
+            raise FileNotFoundError(f"🛑 Cannot find .cpp file to translate: {cpp_file_path}")
 
         logging.info(f"Processing {original_filename} -> {pascal_case_name}.java (Job ID: {file_id})")
 
@@ -91,27 +86,65 @@ def translate_code(file_id, original_filename):
         ### INITIAL TRANSLATION ###
         ###########################
         logging.info(f"Starting initial translation for {pascal_case_name}.java")
+        
+        # Create header block for context (if any)
+        header_snippets = ""
+        if headers:
+            header_snippets = "\n===== INCLUDED HEADER FILES (.h) =====\n" + "\n\n".join(
+                f"// HEADER: {name}\n{content}" for name, content in headers.items()
+            )
+            
+        # Custom user prompt gets added at the end as clarification
+        custom_prompt_section = ""
+        if custom_prompt:
+            custom_prompt_section = (
+                "\n\nAdditional instructions for this translation:\n"
+                f"{custom_prompt.strip()}"
+            )
+        
         cpp_hints = extract_cpp_hints(cpp_code)
+        
+        full_prompt = (
+            f"Translate the following C++ source file into idiomatic, fully compilable Java 17 code."
+            f"{header_snippets}\n\n"
+            f"===== C++ SOURCE FILE =====\n{cpp_code}\n\n"
+            f"Guidelines:\n"
+            f"- Output strictly one valid Java file, and nothing else (no explanations, comments outside code, or markdown).\n"
+            f"- The output must form a single, compilable Java 17 file.\n"
+            f"- Place all necessary import statements at the very top.\n"
+            f"- The main public class must be named exactly \"{pascal_case_name}\".\n"
+            f"- Re-implement external C++ library functionality using modern Java libraries.\n"
+            f"- Do not copy C++ syntax directly — use idiomatic Java.\n"
+            f"- Use standard Java collections instead of STL containers.\n"
+            f"- Use try-with-resources where applicable.\n"
+            f"- Make helper or nested classes public (and static if possible).\n\n"
+            f"Hints extracted from the C++ code:\n{cpp_hints}"
+            f"{custom_prompt_section}"
+        )
+        
+        # full_prompt = (
+        #         f'Translate the following C++ source file into idiomatic, fully compilable Java 17 code.\n\n'
+        #         f'===== C++ SOURCE =====\n{cpp_code}\n\n'
+        #         f'Guidelines:\n'
+        #         f'- Output strictly one valid Java file, and nothing else (no explanations, comments outside code, or markdown).\n'
+        #         f'- The output must form a single, compilable Java 17 file.\n'
+        #         f'- The main public class must be named exactly "{pascal_case_name}", matching the desired filename.\n'
+        #         f'- Ensure proper class structure: place all necessary import statements at the very top.\n'
+        #         f'- Helper classes should ideally be top-level classes within the same file or properly nested if appropriate for Java.\n'
+        #         f'- When external C++ libraries are used (like Boost, Qt, etc.), re-implement their functionality using modern Java standard libraries (java.util, java.nio, java.time, streams, etc.) or suggest common open-source Java alternatives (like Apache Commons, Guava).\n'
+        #         f'- Do not mirror C++ syntax (e.g., pointers, manual memory management) or C++ Standard Library APIs directly. Write idiomatic Java that achieves the equivalent behavior.\n'
+        #         f'- Use Java collections (ArrayList, HashMap, etc.) instead of C++ STL containers.\n'
+        #         f'- Any helper classes, structs, or custom exception classes defined in the C++ source that are needed outside the main class (e.g., for return types, parameters, or testing) MUST be declared **`public`** in the generated Java code. If they are nested within another class, also make them **`static`** if possible (i.e., if they do not depend on an instance of the outer class).\n'
+        #         f'- Use try-with-resources for resource management where applicable.\n\n'
+        #         f'Hints extracted from the C++ code:\n{cpp_hints}\n\n'
+        #         f'Output only the raw Java code.\n\n'
+        #         f"{custom_prompt_section}"'
+        # )
 
         initial_payload = {
             "model": MODEL_NAME,
             "system": SYSTEM_PROMPT,
-            "prompt": (
-                f'Translate the following C++ source file into idiomatic, fully compilable Java 17 code.\n\n'
-                f'===== C++ SOURCE =====\n{cpp_code}\n\n'
-                f'Guidelines:\n'
-                f'- Output strictly one valid Java file, and nothing else (no explanations, comments outside code, or markdown).\n'
-                f'- The output must form a single, compilable Java 17 file.\n'
-                f'- Ensure proper class structure: place all necessary import statements at the very top.\n'
-                f'- The main public class must be named exactly "{pascal_case_name}", matching the desired filename.\n'
-                f'- Helper classes should ideally be top-level classes within the same file or properly nested if appropriate for Java.\n'
-                f'- When external C++ libraries are used (like Boost, Qt, etc.), re-implement their functionality using modern Java standard libraries (java.util, java.nio, java.time, streams, etc.) or suggest common open-source Java alternatives (like Apache Commons, Guava).\n'
-                f'- Do not mirror C++ syntax (e.g., pointers, manual memory management) or C++ Standard Library APIs directly. Write idiomatic Java that achieves the equivalent behavior.\n'
-                f'- Use Java collections (ArrayList, HashMap, etc.) instead of C++ STL containers.\n'
-                f'- Use try-with-resources for resource management where applicable.\n\n'
-                f'Hints extracted from the C++ code:\n{cpp_hints}\n\n'
-                f'Output only the raw Java code.'
-            ),
+            "prompt": full_prompt,
             "stream": False
         }
 
@@ -348,7 +381,9 @@ def translate_code(file_id, original_filename):
             logging.warning(f"⚠️ Could not remove original .cpp file {cpp_file_path}: {e}")
 
 # --- Notification ---
-def notify_test_generation_worker(pascal_case_name: str, status: str, file_path: str or None):
+from typing import Optional
+
+def notify_test_generation_worker(pascal_case_name: str, status: str, file_path: Optional[str]):
     """Sends a message to RabbitMQ to trigger test generation, including status."""
     try:
         logging.info(f"Attempting to notify Test Generation Worker for {pascal_case_name} (Status: {status.upper()})...")
@@ -626,7 +661,7 @@ try:
     script_dir = os.path.dirname(os.path.abspath(__file__))
     profiles_dir = os.path.join(script_dir, 'profiles')
     sys.path.append(profiles_dir)
-    from cpp_patterns import detect_cpp_patterns
+    from profiles.cpp_patterns import detect_cpp_patterns
     logging.info("Successfully imported 'detect_cpp_patterns'.")
 except ImportError:
     logging.warning("Could not import 'detect_cpp_patterns'. C++ hints will be disabled.")
@@ -669,7 +704,9 @@ def start_worker():
                 try:
                     message = json.loads(body.decode())
                     file_id = message.get("file_id")
-                    original_filename = message.get("filename")
+                    original_filename = message.get("cpp_filename")
+                    custom_prompt = message.get("custom_prompt")
+                    headers = message.get("headers", {})
 
                     if not file_id or not original_filename:
                          raise ValueError("Missing 'file_id' or 'filename' in message")
@@ -677,7 +714,7 @@ def start_worker():
                     logging.info(f"Received job: file_id={file_id}, filename={original_filename}")
                     # Optional short delay if needed, but usually processing starts immediately
                     # time.sleep(1)
-                    translate_code(file_id, original_filename)
+                    translate_code(file_id, original_filename, custom_prompt, headers)
                     processing_time = time.time() - start_time
                     logging.info(f"Finished job for {original_filename} in {processing_time:.2f} seconds. Sending ACK.")
                     ch.basic_ack(delivery_tag=method.delivery_tag)

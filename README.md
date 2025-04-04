@@ -78,13 +78,14 @@ It is designed to be **modular** and **scalable**, using Docker and message queu
 - Returns Java code translations
 - Can be swapped with other LLMs that support local inference
 
-## TODO Command-Line Options:
+## Example POST-Request Parameter:
 
-| Option | Description |
-|--------|-------------|
-|-h, --help | |
-| | |
-|--verbose | Show log output in console |
+| Key | Type | Value |
+|--------|--|-------------|
+|files (.cpp file) | File | isValidTradingPair.cpp |
+|files (.h file) | File | c.datum.h
+|files (.h file) | File | c.waehrung.h
+|custom_prompt | Text | The previous output missed a static nested helper class called Config. Ensure it’s static and public. |
 
 ## TODO Contents
 

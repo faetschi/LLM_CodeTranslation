@@ -17,20 +17,22 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Install JUnit 5 Libraries
-# Define versions (use recent stable versions)
-ENV JUNIT_PLATFORM_VERSION=1.10.2
-ENV JUNIT_JUPITER_VERSION=5.10.2
+ENV JUNIT_JUPITER_VERSION=5.8.1
+ENV JUNIT_PLATFORM_VERSION=1.8.1
+ENV OPENTEST4J_VERSION=1.2.0
+ENV APIGUARDIAN_VERSION=1.1.2
 ENV JUNIT_LIB_DIR_PATH=/app/libs
 
 # Create the directory and download JUnit JARs needed for compilation
 RUN mkdir -p ${JUNIT_LIB_DIR_PATH} && \
     cd ${JUNIT_LIB_DIR_PATH} && \
-    wget https://repo1.maven.org/maven2/org/junit/platform/junit-platform-commons/${JUNIT_PLATFORM_VERSION}/junit-platform-commons-${JUNIT_PLATFORM_VERSION}.jar && \
+    echo "Downloading JUnit JARs to ${JUNIT_LIB_DIR_PATH}..." && \
     wget https://repo1.maven.org/maven2/org/junit/jupiter/junit-jupiter-api/${JUNIT_JUPITER_VERSION}/junit-jupiter-api-${JUNIT_JUPITER_VERSION}.jar && \
-    # Add other JUnit JARs if needed by generated tests (e.g., params, engine - though engine might only be needed for running)
-    # wget https://repo1.maven.org/maven2/org/junit/jupiter/junit-jupiter-params/${JUNIT_JUPITER_VERSION}/junit-jupiter-params-${JUNIT_JUPITER_VERSION}.jar && \
-    # wget https://repo1.maven.org/maven2/org/opentest4j/opentest4j/1.3.0/opentest4j-1.3.0.jar && \
-    # wget https://repo1.maven.org/maven2/org/apiguardian/apiguardian-api/1.1.2/apiguardian-api-1.1.2.jar && \
+    wget https://repo1.maven.org/maven2/org/junit/jupiter/junit-jupiter-params/${JUNIT_JUPITER_VERSION}/junit-jupiter-params-${JUNIT_JUPITER_VERSION}.jar && \
+    wget https://repo1.maven.org/maven2/org/junit/platform/junit-platform-commons/${JUNIT_PLATFORM_VERSION}/junit-platform-commons-${JUNIT_PLATFORM_VERSION}.jar && \
+    wget https://repo1.maven.org/maven2/org/opentest4j/opentest4j/${OPENTEST4J_VERSION}/opentest4j-${OPENTEST4J_VERSION}.jar && \
+    wget https://repo1.maven.org/maven2/org/apiguardian/apiguardian-api/${APIGUARDIAN_VERSION}/apiguardian-api-${APIGUARDIAN_VERSION}.jar && \
+    echo "Finished downloading JUnit JARs." && \
     cd /test_worker # Return to workdir
 
 # Set Default JUNIT_LIB_DIR Env Var
