@@ -15,13 +15,14 @@ logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 
 # Environment variables from .env
 MODEL_NAME = os.getenv("LLM_MODEL")
+SYSTEM_PROMPT = os.getenv("TEST_SYSTEM_PROMPT")
 OLLAMA_URL = "http://ollama:11434/api/generate"
 TESTS_DIR = "/test_worker/tests/"
 
 # Ensure the directory for tests exists
 os.makedirs(TESTS_DIR, exist_ok=True)
 
-def generate_integration_test(java_file):
+def generate_integration_test(java_file, cpp_test_reference=None):
     """
     Function to send a request to the LLM to generate a JUnit test for the provided Java file.
     """
@@ -32,17 +33,40 @@ def generate_integration_test(java_file):
     with open(java_file, "r") as file:
         java_code = file.read()
 
+    ## If a C++ test reference is provided, include it in the prompt
+    cpp_test_snippet = ""
+    if cpp_test_reference:
+        logging.info("C++ test reference provided. Including it in the prompt.")
+        cpp_test_snippet = (
+            "\n\n===== REFERENCE C++ TEST FILE =====\n"
+            "// This shows how the original class was tested in C++. Preserve the testing logic and make the same number of tests and cases\n"
+            f"{cpp_test_reference.strip()}"
+        )
+    else:
+        logging.info("No C++ test reference provided.")
+        
+        prompt = (
+        f"Please generate a JUnit 5 test class for the following Java code. "
+        f"The test should cover all public methods and reflect the logic and edge cases demonstrated in the C++ test.\n\n"
+        f"===== JAVA CODE =====\n{java_code.strip()}\n\n"
+        f"{cpp_test_snippet}\n\n"
+        f"Instructions:\n"
+        f"- Recreate the test logic and intent shown in the C++ test using idiomatic Java and JUnit 5.\n"
+        f"- The resulting Java test class must be named exactly '{pascal_case_name}Test'.\n"
+        f"- Instantiate any classes unless their methods are declared static.\n"
+        f"- Do not assume static access unless explicitly declared.\n"
+        f"- Use assertions from JUnit 5, such as assertEquals, assertTrue, assertFalse, and assertThrows.\n"
+        f"- Always include all necessary import statements, especially for classes from java.util.*, java.time.*, and java.time.format.*.\n"
+        f"- If parsing or formatting is used, include java.time.format.DateTimeFormatter.\n"
+        f"- If any CLI-like methods (e.g. main) are tested, test their logic via a helper method if possible.\n"
+        f"- Return only the complete Java test class, including import statements. Do not include any explanations or external comments."
+    )
+
     # Create a prompt for LLM to generate a JUnit test
     payload = {
         "model": MODEL_NAME,
-        "system": "You are a software engineer that generates JUnit test files for Java classes.",
-        "prompt": (
-            f"Please generate a JUnit 5 integration test for the following Java class. "
-            f"The test should cover its public methods and should include a few edge cases.\n\n"
-            f"===== JAVA CODE =====\n{java_code}\n\n"
-            f"Please write only the JUnit test class, including necessary imports. The main class name should be exactly named {pascal_case_name}Test. "
-            f"Don't include the original Java class or any explanation."
-        ),
+        "system": SYSTEM_PROMPT,
+        "prompt": prompt,
         "stream": False
     }
 
@@ -101,9 +125,10 @@ def start_test_worker():
 
                 if action == 'generate_test':
                     java_file = message.get('java_file_path')
+                    cpp_test_reference = message.get('cpp_test_reference')
                     if java_file:
                         logging.info(f"Received request to generate test for: {java_file}")
-                        test_file = generate_integration_test(java_file)
+                        test_file = generate_integration_test(java_file, cpp_test_reference)
                         if test_file:
                             logging.info(f"Generated test file: {test_file}")
                         else:

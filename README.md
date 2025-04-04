@@ -80,28 +80,29 @@ It is designed to be **modular** and **scalable**, using Docker and message queu
 
 ## Example POST-Request Parameter:
 
-| Key | Type | Value |
-|--------|--|-------------|
-|files (.cpp file) | File | isValidTradingPair.cpp |
-|files (.h file) | File | c.datum.h
-|files (.h file) | File | c.waehrung.h
-|custom_prompt | Text | The previous output missed a static nested helper class called Config. Ensure it’s static and public. |
+| Info| Key | Type | Value |
+|---|-----|-----------|-------------|
+| .cpp file | files | File | isValidTradingPair.cpp |
+| .h file | files | File | c.datum.h
+| .h file | files | File | c.waehrung.h
+| *(optional)* test_ .cpp file |files | File | test_isValidTradingPair.cpp
+| *(optional)*|custom_prompt | Text | The previous output missed a static nested helper class called Config. Ensure it’s static and public. |
 
-## TODO Contents
+## TODO Testing that worked/didnt work
 
-```
-.
-├── fastapi
-├── model_loader
-├── ollama
-├── test_worker           # Service for generating tests
-├── tests
-├── translation_worker    # Main translation service
-│   └── /translated       
-│   └──
-├── 
-├──
-```
+### Existing files are overwritten when Request with same filename happens
+
+isValidTradingPair
+  - isValidTradingPair.cpp
+  - c_datum.h
+  - c_waehrung.h
+  - test_isValidTradingPair
+
+First iteration:
+  - No custom_prompt
+  - 8/8 tests successfull
+
+
 
 ## 🛠 Debugging
 

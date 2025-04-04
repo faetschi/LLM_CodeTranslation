@@ -14,7 +14,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 RABBITMQ_HOST = 'rabbitmq'
 TRANSLATION_QUEUE = 'translation_queue'
 
-def send_to_queue(file_id, cpp_filename, custom_prompt=None, header_files=None):
+def send_to_queue(file_id, cpp_filename, cpp_test_file=None, custom_prompt=None, header_files=None):
     """
     Send translation job with full context to RabbitMQ.
     Includes file_id, file name, optional prompt, and full header content.
@@ -41,6 +41,7 @@ def send_to_queue(file_id, cpp_filename, custom_prompt=None, header_files=None):
         job = {
             "file_id": file_id,
             "cpp_filename": cpp_filename,
+            "cpp_test_file": cpp_test_file,
             "custom_prompt": custom_prompt,
             "headers": headers_payload
         }
@@ -72,6 +73,7 @@ async def translate_file(
     file_id = str(uuid.uuid4())
     uploaded_file_map = {}
     cpp_filename = None
+    cpp_test_filename = None
 
     for file in files:
         save_path = os.path.join(UPLOAD_DIR, file.filename)
@@ -79,7 +81,9 @@ async def translate_file(
             shutil.copyfileobj(file.file, buffer)
         uploaded_file_map[file.filename] = save_path
 
-        if file.filename.endswith(".cpp"):
+        if file.filename.startswith("test_") and file.filename.endswith(".cpp"):
+            cpp_test_filename = file.filename
+        elif file.filename.endswith(".cpp"):
             cpp_filename = file.filename
 
     if not cpp_filename:
@@ -90,10 +94,19 @@ async def translate_file(
         name: path for name, path in uploaded_file_map.items()
         if name.endswith(".h")
     }
+    
+    # Read cpp test file content if provided
+    test_file_content = None
+    if cpp_test_filename:
+        test_path = uploaded_file_map.get(cpp_test_filename)
+        if test_path and os.path.exists(test_path):
+            with open(test_path, "r", encoding="utf-8") as tf:
+                test_file_content = tf.read()
 
     send_to_queue(
         file_id=file_id,
         cpp_filename=cpp_filename,
+        cpp_test_file=test_file_content,
         custom_prompt=custom_prompt,
         header_files=headers
     )
@@ -103,5 +116,6 @@ async def translate_file(
         "file_id": file_id,
         "cpp_filename": cpp_filename,
         "headers_sent": list(headers.keys()),
+        "cpp_test_filename": cpp_test_filename,
         "custom_prompt": custom_prompt
     }
