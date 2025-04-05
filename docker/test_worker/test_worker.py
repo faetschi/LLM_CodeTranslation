@@ -71,7 +71,7 @@ def generate_integration_test(java_file, cpp_test_reference=None):
         "system": SYSTEM_PROMPT,
         "prompt": prompt,
         "options": {            
-                "num_ctx": 4000        # max context window size, default 2048 tokens, qwen2.5-coder limit 32,768
+                "num_ctx": 3500        # max context window size, default 2048 tokens, qwen2.5-coder limit 32,768
         },
         "stream": False
     }

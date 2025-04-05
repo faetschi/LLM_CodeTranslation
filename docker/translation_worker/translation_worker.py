@@ -128,7 +128,7 @@ def translate_code(file_id, original_filename, custom_prompt=None, headers=None,
             "system": SYSTEM_PROMPT,
             "prompt": full_prompt,
             "options": {            
-                "num_ctx": 4000         # max context window size, default 2048 tokens, qwen2.5-coder limit 32,768
+                "num_ctx": 3500         # max context window size, default 2048 tokens, qwen2.5-coder limit 32,768
             },
             "stream": False,
         }
@@ -262,7 +262,7 @@ def translate_code(file_id, original_filename, custom_prompt=None, headers=None,
                 "system": SYSTEM_PROMPT,
                 "prompt": "".join(retry_prompt_parts),
                 "options": {            
-                    "num_ctx": 4000         # max context window size, default 2048 tokens, qwen2.5-coder limit 32,768
+                    "num_ctx": 3500         # max context window size, default 2048 tokens, qwen2.5-coder limit 32,768
                 },
                 "stream": False,
             }
