@@ -88,19 +88,37 @@ It is designed to be **modular** and **scalable**, using Docker and message queu
 | *(optional)* test_ .cpp file |files | File | test_isValidTradingPair.cpp
 | *(optional)*|custom_prompt | Text | The previous output missed a static nested helper class called Config. Ensure it’s static and public. |
 
-## TODO Testing that worked/didnt work
+## TODO Testing Documentation
 
 ### Existing files are overwritten when Request with same filename happens
 
-isValidTradingPair
-  - isValidTradingPair.cpp
-  - c_datum.h
-  - c_waehrung.h
-  - test_isValidTradingPair
+- isValidTradingPair
+  - Files:
+    - isValidTradingPair.cpp
+    - c_datum.h
+    - c_waehrung.h
+    - test_isValidTradingPair
 
-First iteration:
-  - No custom_prompt
-  - 8/8 tests successfull
+First Iteration
+
+
+Second Iteration
+
+Added 2 lines at Auto generated Test: test_isValidTradingPair.java:
+
+    import IsValidTradingPair.IsValidTradingPair.cADatum;
+    import IsValidTradingPair.IsValidTradingPair.cWaehrung;
+
+8/8 Tests successful.
+
+| Input | Java Output | C++ Output | Note |
+|--|--|--|--|
+|-d20250419 -pEURUSD -v | 20250419 - Kein Handelstag <br> 0 | 20250419 - Kein Handelstag |
+| -d20250403 -pEURUSD -v | 20250421 - Gueltiges Trading-Paar: EURUSD | 20250403 - Gueltiges Trading-Paar: EURUSD
+| -d20250403 -pBADKURS -v | 20250403 - Kein Handelstag | 20250403 - Ungueltiges Waehrungspaar: BADKURS | WRONG EDGECASE
+
+
+
 
 
 

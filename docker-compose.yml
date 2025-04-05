@@ -14,7 +14,7 @@ services:
     volumes:
       - ./docker/ollama:/root/.ollama
     environment:
-    - OLLAMA_KEEP_ALIVE=-1  # Keeps the model in memory indefinitely
+    - OLLAMA_KEEP_ALIVE=-1  # Keeps the model in memory indefinitely, needs high VRAM so this doesnt degrade performance
     - OLLAMA_MODEL=${LLM_MODEL}  # Comma-separated model list (your .env)
     - NVIDIA_VISIBLE_DEVICES=all  # <-- Expose all GPUs
     - NVIDIA_DRIVER_CAPABILITIES=compute,utility  # <-- Enable full CUDA performance

@@ -117,7 +117,7 @@ def translate_code(file_id, original_filename, custom_prompt=None, headers=None,
                 f"- Avoid any form of refactoring, optimization, or code simplification. The priority is a direct, functionally equivalent translation, not idiomatic refinement.\n\n"
                 f"After outputting the Java file, double-check that:\n"
                 f"- All branches, loops, and conditionals from the C++ file are represented.\n"
-                f"- The behavior of functions remains the same.\n"
+                f"- The behavior of all functions remain precisely the same as the original C++ implementation.\n"
                 f"- No logic has been omitted, reordered, or reinterpreted.\n"
                 f"{cpp_hints}\n\n"
                 f"{custom_prompt_section}\n"
@@ -127,8 +127,10 @@ def translate_code(file_id, original_filename, custom_prompt=None, headers=None,
             "model": MODEL_NAME,
             "system": SYSTEM_PROMPT,
             "prompt": full_prompt,
+            "options": {            
+                "num_ctx": 4000         # max context window size, default 2048 tokens, qwen2.5-coder limit 32,768
+            },
             "stream": False,
-            "temperature": 0.0
         }
 
         try:
@@ -236,7 +238,7 @@ def translate_code(file_id, original_filename, custom_prompt=None, headers=None,
             if previous_sanitized_log:
                  retry_prompt_parts.append(f"\n\n===== PREVIOUS COMPILATION ERRORS (Attempt {attempt}) =====\n{previous_sanitized_log}")
                  retry_prompt_parts.append(
-                     "\n\nCRITICAL INSTRUCTION: Your previous attempt resulted in the errors shown above ('PREVIOUS COMPILATION ERRORS'). "
+                     "\n\nYour previous attempt resulted in the errors shown above ('PREVIOUS COMPILATION ERRORS'). "
                      "Analyze BOTH the 'CURRENT' and 'PREVIOUS' errors carefully. "
                      "DO NOT repeat the same mistakes. Identify the root cause and provide a significantly improved version."
                  )
@@ -244,15 +246,14 @@ def translate_code(file_id, original_filename, custom_prompt=None, headers=None,
                  retry_prompt_parts.append("\n\nThis is the first attempt to fix the initial translation.")
 
             retry_prompt_parts.append(
-                 f"\n\nPlease correct the code to fix *all* current compilation errors. Strictly follow these rules:\n"
+                 f"\n\nPlease correct the code to fix all current compilation errors. Strictly follow these rules:\n"
                  f"1. Ensure the file contains exactly one top-level public class named \"{pascal_case_name}\".\n"
-                 f"2. Resolve all symbol errors (missing methods, types, variables, incorrect references).\n"
-                 f"3. Add all necessary import statements at the very top.\n"
-                 f"4. Adjust access modifiers (public, private, protected) correctly.\n"
-                 f"5. Fix invalid method declarations, constructors, and return types.\n"
-                 f"6. Ensure helper classes are defined correctly (top-level non-public or properly nested).\n"
-                 f"7. Adhere strictly to Java 17 syntax and conventions.\n"
-                 f"8. Focus on fixing the root causes identified in the *current* error log, ensuring issues from the *previous* log (if any) are also resolved.\n\n"
+                 f"2. Resolve all symbol errors 'cannot find symbol' (missing methods, types, variables, incorrect references) by adding all necessary import statements at the very top.\n"
+                 f"3. Adjust access modifiers (public, private, protected) correctly.\n"
+                 f"4. Fix invalid method declarations, constructors, and return types.\n"
+                 f"5. Ensure helper classes are defined correctly (top-level non-public or properly nested).\n"
+                 f"6. Adhere strictly to Java 17 syntax and conventions.\n"
+                 f"7. Focus on fixing the root causes identified in the compilation error log, ensuring issues from the *previous* log (if any) are also resolved.\n\n"
                  f"Output *only* the corrected, complete Java source code. Do not include explanations, comments outside the code, or markdown formatting."
             )
 
@@ -260,6 +261,9 @@ def translate_code(file_id, original_filename, custom_prompt=None, headers=None,
                 "model": MODEL_NAME,
                 "system": SYSTEM_PROMPT,
                 "prompt": "".join(retry_prompt_parts),
+                "options": {            
+                    "num_ctx": 4000         # max context window size, default 2048 tokens, qwen2.5-coder limit 32,768
+                },
                 "stream": False,
             }
             # *** END RETRY PROMPT CONSTRUCTION ***
@@ -348,7 +352,7 @@ def translate_code(file_id, original_filename, custom_prompt=None, headers=None,
              output_file_path = None
 
         # *** Send notification regardless of success/failure ***
-        notify_test_generation_worker(pascal_case_name, final_status, output_file_path, cpp_test_file)
+        #notify_test_generation_worker(pascal_case_name, final_status, output_file_path, cpp_test_file)
 
         # Cleanup temporary Java and class files
         cleanup_temp_and_class_files(pascal_case_name)

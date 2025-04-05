@@ -1,3 +1,7 @@
+######################################################################
+### Worker that automatically generates JUnit tests for Java files ###
+######################################################################
+
 import pika
 import json
 import logging
@@ -38,14 +42,14 @@ def generate_integration_test(java_file, cpp_test_reference=None):
     if cpp_test_reference:
         logging.info("C++ test reference provided. Including it in the prompt.")
         cpp_test_snippet = (
+            "This shows how the original class was tested in C++. Preserve the testing logic and make the same number of tests and cases\n"
             "\n\n===== REFERENCE C++ TEST FILE =====\n"
-            "// This shows how the original class was tested in C++. Preserve the testing logic and make the same number of tests and cases\n"
             f"{cpp_test_reference.strip()}"
         )
     else:
         logging.info("No C++ test reference provided.")
         
-        prompt = (
+    prompt = (
         f"Please generate a JUnit 5 test class for the following Java code. "
         f"The test should cover all public methods and reflect the logic and edge cases demonstrated in the C++ test.\n\n"
         f"===== JAVA CODE =====\n{java_code.strip()}\n\n"
@@ -56,8 +60,7 @@ def generate_integration_test(java_file, cpp_test_reference=None):
         f"- Instantiate any classes unless their methods are declared static.\n"
         f"- Do not assume static access unless explicitly declared.\n"
         f"- Use assertions from JUnit 5, such as assertEquals, assertTrue, assertFalse, and assertThrows.\n"
-        f"- Always include all necessary import statements, especially for classes from java.util.*, java.time.*, and java.time.format.*.\n"
-        f"- If parsing or formatting is used, include java.time.format.DateTimeFormatter.\n"
+        f"- Make sure to include all necessary import statements, especially for classes from java.util.*, java.time.*, and java.time.format.*.\n"
         f"- If any CLI-like methods (e.g. main) are tested, test their logic via a helper method if possible.\n"
         f"- Return only the complete Java test class, including import statements. Do not include any explanations or external comments."
     )
@@ -67,6 +70,9 @@ def generate_integration_test(java_file, cpp_test_reference=None):
         "model": MODEL_NAME,
         "system": SYSTEM_PROMPT,
         "prompt": prompt,
+        "options": {            
+                "num_ctx": 4000        # max context window size, default 2048 tokens, qwen2.5-coder limit 32,768
+        },
         "stream": False
     }
 
