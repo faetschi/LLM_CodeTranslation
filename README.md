@@ -54,8 +54,63 @@ It is designed to be **modular**, **scalable**, and suitable for **enterprise in
     -F "files=@path/to/test_legacyCode.cpp" \
 
 ## 🧱 System Architecture
-
-<img src="./docs/svg/architecture.svg" alt="System Architecture" style="max-width: 100%; width: 60%; height: auto;" />
+```mermaid
+---
+config:
+  look: classic
+  theme: redux
+  layout: fixed
+---
+flowchart TD
+ subgraph User["User"]
+        A1["Uploads C++ and header files via HTTP"]
+  end
+ subgraph FastAPI["FastAPI Service"]
+        B1["Accepts file uploads"]
+        B2["Stores files in /uploads/"]
+        B3["Sends job to RabbitMQ"]
+  end
+ subgraph MQ["RabbitMQ"]
+        C1[("Message Queue")]
+  end
+ subgraph Ollama["Ollama (LLM Engine)"]
+        E1[("LLM Model")]
+  end
+ subgraph Worker["Translation Worker"]
+    direction TB
+        D1["Listens for tasks"]
+        D2["Preprocess C++ files"]
+        D3["Create prompt"]
+        Ollama
+        D4["Send prompt to Ollama"]
+        D5["Receive Java output"]
+        D6["Compile with javac"]
+        D7{"Compilation successful?"}
+        D8["Save output to /output/"]
+        D9["Extract error logs"]
+        D10["Generate retry prompt"]
+        D11["Send retry to Ollama"]
+        D12["Receive corrected code"]
+  end
+    A1 --> B1
+    B1 --> B2
+    B2 --> B3
+    B3 --> C1
+    C1 --> D1
+    D1 --> D2
+    D2 --> D3
+    D3 --> D4
+    D4 --> E1
+    E1 --> D5 & D12
+    D5 --> D6
+    D6 --> D7
+    D7 -- Yes --> D8
+    D7 -- No --> D9
+    D9 --> D10
+    D10 --> D11
+    D11 --> E1
+    D12 --> D6
+```
 
 ## 🔧 Components
 
