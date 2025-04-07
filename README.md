@@ -1,6 +1,6 @@
 # Code Translation with Large Language Models using Ollama
 
-This project is a **prototype system** that uses **Large Language Models (LLMs)** via **[Ollama](https://ollama.com/)** to automatically translate C++ code into Java.  
+This project is a **prototype system** that uses **Large Language Models (LLMs)** via **[Ollama](https://ollama.com/)** to automatically translate C++ code into Java. 
 It is designed to be **modular**, **scalable**, and suitable for **enterprise integration**, acting as a **proof-of-concept** for future automation workflows.
 
 ## 🚀 Technologies Used
@@ -39,17 +39,6 @@ It is designed to be **modular**, **scalable**, and suitable for **enterprise in
     
 
 ### 4. Send a C++ file via `HTTP request`
-
-#### POST Request Parameters
-
-| Info| Key | Type | Value |
-|---|-----|-----------|-------------|
-| .cpp file | files | File | legacyCode.cpp |
-| .h file | files | File | date.h
-| .h file | files | File | currency.h
-| ... | | |
-| *(optional)*|custom_prompt | Text | The previous output missed a static nested helper class called Config. Ensure it’s static and public. |
-| *(WIP)* test_.cpp file |files | File | test_legacyCode.cpp
 
 #### using POSTMAN
 
@@ -96,6 +85,17 @@ It is designed to be **modular**, **scalable**, and suitable for **enterprise in
 - Receives structured prompts via `POST /api/generate`
 - Returns translated Java code
 - Easily replaceable with other local models
+
+## Example POST Request Parameters
+
+| Info| Key | Type | Value |
+|---|-----|-----------|-------------|
+| .cpp file | files | File | legacyCode.cpp |
+| .h file | files | File | date.h
+| .h file | files | File | currency.h
+| ... | | |
+| *(optional)*|custom_prompt | Text | The previous output missed a static nested helper class called Config. Ensure it’s static and public. |
+| *(WIP)* test_.cpp file |files | File | test_legacyCode.cpp
 
 ## 📄 Notes
 
