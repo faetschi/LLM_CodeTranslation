@@ -1,1 +1,22 @@
-/ollama/
+# General
+.idea/*
+.idea/
+todo.md
+
+# Output
+output/*
+!output/.gitkeep
+
+# Ollama
+docker/ollama/**
+!docker/ollama/.gitkeep
+
+# Translation worker
+docker/translation_worker/temp/*
+!/temp/.gitkeep
+docker/translation_worker/uploads/*
+!/translated/.gitkeep
+docker/translation_worker/translation_worker.iml
+docker/translation_worker/profiles/__pycache__/*
+!docker/translation_worker/profiles/__pycache__/.gitkeep
+docker/translation_worker/.idea

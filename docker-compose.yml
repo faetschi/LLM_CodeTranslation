@@ -1,11 +1,32 @@
-version: '3.8'
-
 networks:
   rabbitmq_network:
     name: rabbitmq_network
     driver: bridge
 
 services:
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    networks:
+      - rabbitmq_network  
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./docker/ollama:/root/.ollama
+    environment:
+    - OLLAMA_KEEP_ALIVE=-1  # Keeps the model in memory indefinitely, needs high VRAM so this doesnt degrade performance
+    - OLLAMA_MODEL=${LLM_MODEL}  # Comma-separated model list (your .env)
+    - NVIDIA_VISIBLE_DEVICES=all  # <-- Expose all GPUs
+    - NVIDIA_DRIVER_CAPABILITIES=compute,utility  # <-- Enable full CUDA performance
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all # <-- Use ALL GPUs (change to 1 if you want just 1 GPU)
+              capabilities: [gpu]
+    restart: always
+    
   rabbitmq:
     image: rabbitmq:management
     container_name: rabbitmq
@@ -20,8 +41,8 @@ services:
 
   fastapi:
     build:
-      context: .
-      dockerfile: app/Dockerfile
+      context: ./docker
+      dockerfile: fastapi/Dockerfile
     container_name: fastapi_service
     networks:
       - rabbitmq_network
@@ -31,13 +52,15 @@ services:
       - rabbitmq
       - ollama
     volumes:
-      - shared_volume:/app/uploads
+      - shared_volume:/fastapi/uploads
+      - ./docker/translation_worker/translated:/translation_worker/translated
+      - ./docker/translation_worker/temp:/translation_worker/temp
     restart: always
 
-  worker:
+  translation_worker:
     build:
-      context: .
-      dockerfile: worker/Dockerfile
+      context: ./docker
+      dockerfile: translation_worker/Dockerfile
     container_name: translation_worker
     networks:
       - rabbitmq_network  
@@ -45,8 +68,13 @@ services:
       - rabbitmq
       - ollama
     volumes:
-      - shared_volume:/app/uploads
+      - shared_volume:/fastapi/uploads
+      - ./docker/translation_worker/temp:/translation_worker/temp
+      - ./docker/translation_worker/profiles:/translation_worker/profiles
+      - ./output:/output
     restart: always
+    env_file:
+      - .env
     deploy:
       resources:
         reservations:
@@ -54,26 +82,45 @@ services:
             - driver: nvidia
               capabilities: [gpu]
 
-  ollama:
-    image: ollama/ollama
-    container_name: ollama
+  test_worker:
+    build:
+      context: ./docker
+      dockerfile: test_worker/Dockerfile
+    container_name: test_worker
     networks:
-      - rabbitmq_network  
-    ports:
-      - "11434:11434"
+      - rabbitmq_network
+    depends_on:
+      - rabbitmq
+      - ollama
     volumes:
-      - ./ollama:/root/.ollama 
+      - shared_volume:/fastapi/uploads
+      - ./docker/translation_worker/translated:/translation_worker/translated
+      - ./docker/tests:/tests
+      - ./output:/output
+    restart: always
+    env_file:
+      - .env
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              count: all # <-- Use ALL GPUs (change to 1 if you want just 1 GPU)
               capabilities: [gpu]
+
+  model-preloader:
+    build:
+      context: ./docker
+      dockerfile: model_loader/Dockerfile
+    container_name: model_preloader
+    depends_on:
+      - ollama
+    networks:
+      - rabbitmq_network
+    env_file:
+      - .env
     environment:
-    - NVIDIA_VISIBLE_DEVICES=all  # <-- Expose all GPUs
-    - NVIDIA_DRIVER_CAPABILITIES=compute,utility  # <-- Enable full CUDA performance
-    restart: always
+      - OLLAMA_URL=http://ollama:11434
+      - OLLAMA_URL=http://ollama:11434
 
 volumes:
   shared_volume:

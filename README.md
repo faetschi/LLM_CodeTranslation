@@ -1,70 +1,143 @@
-# Prototype for Code Translation with Large Language Models using Ollama
+# Code Translation with Large Language Models using Ollama
 
-🚀 Fast 
-💡 Modular 
-📈 Scalable
+This project is a **prototype system** that uses **Large Language Models (LLMs)** via **[Ollama](https://ollama.com/)** to automatically translate C++ code into Java.  
+It is designed to be **modular**, **scalable**, and suitable for **enterprise integration**, acting as a **proof-of-concept** for future automation workflows.
 
-Docker for Deployment
+## 🚀 Technologies Used
 
-## Architecture
+- `Python`
+- `Docker` - Service Containerization
+- [`FastAPI`](https://fastapi.tiangolo.com/) - Lightweight web framework for REST APIs
+- [`RabbitMQ`](https://www.rabbitmq.com/) - Message queue for asynchronous task handling
+- [`Ollama`](https://ollama.com/) - Local LLM backend
+- `javac`, `PMD` - Java compiler and static code analyzer for post-translation validation
 
-[ User/API Request ]
-       ↓
-[ FastAPI Service ]  → Handles authentication, rate limiting, and API requests (users upload C++ files)
-       ↓
-[ Task Queue (RabbitMQ)]  → Distributes tasks across multiple workers, depending on GPU availability (for now, 1 worker, 1 GPU)
-       ↓
-[ Translation Worker (Ollama)]  → Uses GPU efficiently to translate C++ to Java
-       ↓
-[ Storage (Local)] → Saves translated Java files (prototype: local storage, future: cloud storage)
-       ↓
-[ API Response ] → Returns translated Java file
+## 📦 Getting Started
+
+### 1. Build all services
+
+    
+    docker compose build
+    
+
+### 2. Pull your preferred model
+
+    
+    docker exec -it ollama ollama pull qwen2.5-coder:7b
+    
+
+ Set the model in `.env`:
+
+    
+    LLM_MODEL=qwen2.5-coder:7b
+    
+
+### 3. Start all services
+
+    
+    docker compose up
+    
+
+### 4. Send a C++ file via `HTTP request`
+
+#### POST Request Parameters
+
+| Info| Key | Type | Value |
+|---|-----|-----------|-------------|
+| .cpp file | files | File | legacyCode.cpp |
+| .h file | files | File | date.h
+| .h file | files | File | currency.h
+| ... | | |
+| *(optional)*|custom_prompt | Text | The previous output missed a static nested helper class called Config. Ensure it’s static and public. |
+| *(WIP)* test_.cpp file |files | File | test_legacyCode.cpp
+
+#### using POSTMAN
+
+<img src="./docs/readme/postman.png" alt="POSTMAN Screenshot" style="max-width: 100%; width: 80%; height: auto;" />
+
+#### using CURL
+    
+    curl -X POST http://localhost:8000/translate/ \
+    -F "files=@path/to/legacyCode.cpp" \
+    -F "files=@path/to/date.h" \
+    -F "files=@path/to/currency.h" \ 
+    -F "custom_prompt=The previous output missed a static nested helper class called Config. Ensure it’s static and public."
+    -F "files=@path/to/test_legacyCode.cpp" \
+
+## 🧱 System Architecture
+
+<img src="./docs/svg/architecture.svg" alt="System Architecture" style="max-width: 100%; width: 60%; height: auto;" />
+
+## 🔧 Components
+
+### **FastAPI Service (Frontend Interface)**
+- Exposes an API endpoint at `/translate/`
+- Accepts file uploads (`.cpp`, `.h`)
+- Stores files at `/fastapi/uploads/`
+- Sends jobs to RabbitMQ
+
+### **RabbitMQ (Message Broker)**
+- Buffers and routes translation tasks
+- Decouples file upload from translation processing
+- Holds queued translation jobs until a worker is ready
+- Enables reliable and scalable task dispatching
+
+### **Translation Worker (Core Logic)**
+- Listens to the queue for new jobs
+- Handles the complete translation pipeline:
+  - Preprocessing of C++ files
+  - Prompt-based translation via LLM
+  - Compilation with `javac`
+  - Retry logic using error feedback from java compiler
+  - Outputs saved in `/output/`
+
+### **Ollama (LLM Backend)**
+- Hosts the local LLM model (e.g., `qwen2.5-coder:7b`)
+- Receives structured prompts via `POST /api/generate`
+- Returns translated Java code
+- Easily replaceable with other local models
+
+## 📄 Notes
+
+- Existing files with the same name will be overwritten.
+
+- Ollama currently supports a context window of 3500 tokens (default: 2048).
 
 
-## Docker Commands
+## 🛠 Debugging & Useful Commands
 
-docker exec -it ollama sh
+- General Docker commands:
 
-       ollama list
+  ```bash
+  docker compose up --build -d              # detached mode
+  docker logs translation_worker --follow   # show logs of specific service
+  docker exec -it ollama sh                 # access Ollama container shell
+  ollama list                               # list available models
+  ```
 
-       curl -s -X POST -H "Content-Type: application/json" \
-     --data '{"model": "qwen2.5-coder:7b", "pr> ompt": "What is 1 + 1?", "stream": false}' \
-     > http://localhost:11434/api/generate | grep -o '"response":"[^"]*"' | sed 's/"response":"//;s/"$//'
+- Test the LLM directly:
+
+  ```bash
+  curl -s -X POST http://localhost:11434/api/generate \
+    -H "Content-Type: application/json" \
+    -d '{"model": "qwen2.5-coder:7b", "prompt": "What is 1 + 1?", "stream": false}'
+  ```
        
+## 📚 Planned Features
 
-docker logs translation_worker --follow
+- *(WIP)* *Test Worker*: Auto-generate unit tests post-translation
 
+- *(WIP)* PMD Feedback Loop: Use static analysis to improve retry logic
 
+- Support for additional language pairs (e.g., Python ⇄ Java)
 
-## Steps to Implement the Prototype
+- Cloud integration (e.g., PostgreSQL, S3)
 
-Set up Docker with FastAPI, RabbitMQ, and Ollama.
-Implement the FastAPI service to handle file uploads & retrieval.
-Set up RabbitMQ and make sure messages are correctly queued.
-Develop a Python worker to process translations using Ollama.
-Test the prototype with sample C++ files.
-Implement logging & basic error handling.
-Prepare documentation for scalability & future improvements.
+- Enterprise fine-tuning of models
 
+- Web UI for job monitoring and status tracking
 
-- Set Up FastAPI for User Requests
-Users upload C++ files via an API.
-API validates input, assigns a unique file ID, and stores the file temporarily.
-Sends a task to RabbitMQ for processing.
+## 📄 License
 
-- Implement Task Queue (RabbitMQ)
-FastAPI sends file IDs to RabbitMQ.
-RabbitMQ manages job distribution (for now, just 1 worker, later can scale to multiple GPUs).
-
-- Develop Translation Worker
-Worker fetches the job from RabbitMQ.
-Reads the C++ file, sends it to Ollama for translation.
-Saves the translated Java file locally.
-
-- Store Translated Files
-Saves Java files in a local directory (future: S3 storage for cloud access).
-
-Files can be retrieved via API.
-- Return API Response
-User requests translated file using the unique file ID.
-API checks storage and returns the Java file.
+This project is part of a Bachelor Thesis in collaboration with Oesterreichische Kontrollbank AG (OeKB).
+Licensed under the [MIT License](LICENSE). 

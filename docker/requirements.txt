@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+pika
+requests
+python-multipart
+python-dotenv

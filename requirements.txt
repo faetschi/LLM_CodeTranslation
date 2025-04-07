@@ -1,5 +1,0 @@
-fastapi
-uvicorn
-pika  # For RabbitMQ
-requests
-python-multipart
