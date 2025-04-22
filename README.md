@@ -14,13 +14,18 @@ It is designed to be **modular**, **scalable**, and suitable for **enterprise in
 
 ## 📦 Getting Started
 
-### 1. Build all services
+### 1. Set key configuration values in `.env`
+
+    LLM_MODEL=qwen2.5-coder:7b
+    MAX_ALLOWED_TOKENS=32768
+
+### 2. Build all services
 
     
     docker compose build
     
 
-### 2. Pull your preferred model
+### 3. Pull your preferred model
 
     
     docker exec -it ollama ollama pull qwen2.5-coder:7b
@@ -32,24 +37,24 @@ It is designed to be **modular**, **scalable**, and suitable for **enterprise in
     LLM_MODEL=qwen2.5-coder:7b
     
 
-### 3. Start all services
+### 4. Start all services
 
     
     docker compose up
     
 
-### 4. Send a C++ file via `HTTP request`
+### 5. Start translation by sending a C++ file via `HTTP request`
 
 #### POST Request Parameters
 
 | Info| Key | Type | Value |
 |---|-----|-----------|-------------|
-| .cpp file | files | File | legacyCode.cpp |
-| .h file | files | File | date.h
-| .h file | files | File | currency.h
+| main file | files | File | legacyCode.cpp |
+| header file | files | File | date.h
+| header file | files | File | currency.h
 | ... | | |
 | *(optional)*|custom_prompt | Text | The previous output missed a static nested helper class called Config. Ensure it’s static and public. |
-| *(WIP)* test_.cpp file |files | File | test_legacyCode.cpp
+| *(WIP)* test file |files | File | test_legacyCode.cpp
 
 #### using POSTMAN
 
@@ -66,7 +71,9 @@ It is designed to be **modular**, **scalable**, and suitable for **enterprise in
 
 ## 🧱 System Architecture
 
-<img src="./docs/svg/architecture.svg" alt="System Architecture" style="max-width: 100%; width: 60%; height: auto;" />
+<div style="text-align: center;">
+  <img src="./docs/svg/architecture_dark.svg" alt="System Architecture" style="max-width: 100%; width: 60%; height: auto;" />
+</div>
 
 ## 🔧 Components
 
@@ -99,10 +106,13 @@ It is designed to be **modular**, **scalable**, and suitable for **enterprise in
 
 ## 📄 Notes
 
-- Existing files with the same name will be overwritten.
+- Ollama currently has a default context window of 2048 tokens. To mitigate this, a `estimate_token_count` method is used, roughly estimating the tokens needed for a given prompt (currently word count * 2.8).
 
-- Ollama currently supports a context window of 3500 tokens (default: 2048).
+- Filenames are converted to PascalCase to follow Java naming conventions. Adjust as needed for other target languages.
 
+- Language-specific pattern hints in ``output/profiles`` are appended to prompts to improve translation accuracy. Adjust via C++ Hints Extraction as needed.
+
+- Existing translated files in the ``output`` folder will be overwritten when the translation process starts.
 
 ## 🛠 Debugging & Useful Commands
 
@@ -113,6 +123,7 @@ It is designed to be **modular**, **scalable**, and suitable for **enterprise in
   docker logs translation_worker --follow   # show logs of specific service
   docker exec -it ollama sh                 # access Ollama container shell
   ollama list                               # list available models
+  docker-compose restart ollama             # restart ollama to regain vram
   ```
 
 - Test the LLM directly:

@@ -2,6 +2,7 @@
 .idea/*
 .idea/
 todo.md
+evaluation/.vscode
 
 # Output
 output/*

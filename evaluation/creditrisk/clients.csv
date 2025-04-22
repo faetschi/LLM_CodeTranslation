@@ -1,0 +1,16 @@
+ClientID,Name,Country,ClientType,Age,Income,Employment,Industry,Debt
+C001,Alpha GmbH,AT,corporate,42,120000,permanent,finance,5000
+C002,Beta AG,DE,corporate,51,85000,permanent,it,15000
+C003,Charlie Retail,FR,retail,34,31000,temporary,retail,10000
+C004,Delta Ventures,NL,corporate,60,210000,self-employed,pharma,7000
+C005,Echo Retail,ES,retail,28,22000,unemployed,retail,18000
+C006,Foxtrot Gov,IT,sovereign,57,195000,permanent,government,2000
+C007,Gamma Group,AT,corporate,39,0,permanent,energy,20000
+C008,Helix Bank,CH,corporate,61,178000,permanent,finance,3000
+C009,Iota Retail,BE,retail,31,21000,part-time,ecommerce,9000
+C010,Juliet State,PL,sovereign,48,190000,permanent,government,6000
+C011,Kilo Corp,DK,corporate,36,75000,contract,construction,25000
+C012,Lambda Retail,SE,retail,24,18000,unemployed,retail,5000
+C013,Mirage Tech,US,corporate,45,95000,permanent,technology,8000
+C014,Nova Health,FI,corporate,59,165000,self-employed,healthcare,12000
+C015,Orion Food,ES,retail,30,27000,temporary,agriculture,16000

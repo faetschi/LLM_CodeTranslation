@@ -1,7 +1,7 @@
 # Use the NVIDIA CUDA base image with the full toolkit (devel)
-FROM nvidia/cuda:12.4.1-devel-ubuntu22.04
+#FROM nvidia/cuda:12.4.1-devel-ubuntu22.04
 
-FROM python:3.11-slim
+FROM python:3.13-slim
 
 WORKDIR /translation_worker
 
@@ -24,6 +24,8 @@ RUN wget https://github.com/pmd/pmd/releases/download/pmd_releases%2F${PMD_VERSI
 
 # Add PMD to PATH
 ENV PATH="/opt/pmd/bin:${PATH}"
+
+RUN pip install wheel
 
 RUN pip install --no-cache-dir -r requirements.txt
 
