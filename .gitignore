@@ -3,6 +3,7 @@
 .idea/
 todo.md
 evaluation/.vscode
+*.exe
 
 # Output
 output/*

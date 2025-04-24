@@ -15,6 +15,9 @@ private:
     int accessLevel;
 
 public:
+    // Default constructor added to fix STL map usage!
+    User() : username(""), email(""), accessLevel(1) {}
+
     User(const std::string& uname, const std::string& mail, int level)
         : username(uname), email(mail), accessLevel(level) {}
 

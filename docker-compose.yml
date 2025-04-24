@@ -14,8 +14,12 @@ services:
     volumes:
       - ./docker/ollama:/root/.ollama
     environment:
-    - OLLAMA_KEEP_ALIVE=-1 #600  # unload if unused for 10 minutes # -1 keeps the model in memory indefinitely (needs high VRAM!!!)
-    - OLLAMA_MODEL=${LLM_MODEL}  # Comma-separated model list (your .env)
+    - OLLAMA_KEEP_ALIVE=-1        # 10m = unload if unused for 10 minutes # -1 keeps the model in memory indefinitely (needs high VRAM!!!)
+    - OLLAMA_MODEL=${LLM_MODEL}   # Comma-separated model list (your .env)
+    # - OLLAMA_DEBUG=1              # verbose logs
+    - OLLAMA_REQUEST_TIMEOUT=120  # increase timeouts
+    - OLLAMA_RUN_TIMEOUT=300
+    - OLLAMA_LOAD_TIMEOUT=30m
     - NVIDIA_VISIBLE_DEVICES=all  # <-- Expose all GPUs
     - NVIDIA_DRIVER_CAPABILITIES=compute,utility  # <-- Enable full CUDA performance
     deploy:
@@ -25,7 +29,7 @@ services:
             - driver: nvidia
               count: all # <-- Use ALL GPUs (change to 1 if you want just 1 GPU)
               capabilities: [gpu]
-    restart: unless-stopped #always
+    restart: unless-stopped # always
     
   rabbitmq:
     image: rabbitmq:management
@@ -82,30 +86,30 @@ services:
             - driver: nvidia
               capabilities: [gpu]
 
-  test_worker:
-    build:
-      context: ./docker
-      dockerfile: test_worker/Dockerfile
-    container_name: test_worker
-    networks:
-      - rabbitmq_network
-    depends_on:
-      - rabbitmq
-      - ollama
-    volumes:
-      - shared_volume:/fastapi/uploads
-      - ./docker/translation_worker/translated:/translation_worker/translated
-      - ./docker/tests:/tests
-      - ./output:/output
-    restart: always
-    env_file:
-      - .env
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              capabilities: [gpu]
+  # test_worker:
+  #   build:
+  #     context: ./docker
+  #     dockerfile: test_worker/Dockerfile
+  #   container_name: test_worker
+  #   networks:
+  #     - rabbitmq_network
+  #   depends_on:
+  #     - rabbitmq
+  #     - ollama
+  #   volumes:
+  #     - shared_volume:/fastapi/uploads
+  #     - ./docker/translation_worker/translated:/translation_worker/translated
+  #     - ./docker/tests:/tests
+  #     - ./output:/output
+  #   restart: always
+  #   env_file:
+  #     - .env
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             capabilities: [gpu]
 
   model-preloader:
     build:
