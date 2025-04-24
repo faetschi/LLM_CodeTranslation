@@ -22,6 +22,8 @@ logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 SYSTEM_PROMPT = os.getenv("SYSTEM_PROMPT")
 MODEL_NAME = os.getenv("LLM_MODEL")
 MAX_RETRIES = int(os.getenv("MAX_TRANSLATION_RETRIES", 5))
+UNLOAD_AFTER_JOBS = int(os.getenv("UNLOAD_AFTER_JOBS", 5))
+MAX_ALLOWED_TOKENS = int(os.getenv("MAX_ALLOWED_TOKENS"))
 
 UPLOAD_DIR = "/fastapi/uploads/"
 TEMP_DIR = "/translation_worker/temp/"
@@ -71,6 +73,7 @@ def translate_code(file_id, original_filename, custom_prompt=None, headers=None,
     success = False
     final_status = "failed" # Assume failure initially
     output_file_path = None # Path to send in notification
+    job_counter = 0
 
     try:
         if not os.path.exists(cpp_file_path):
@@ -123,18 +126,24 @@ def translate_code(file_id, original_filename, custom_prompt=None, headers=None,
                 f"{custom_prompt_section}\n"
         )
         
+        estimated_tokens = estimate_token_count(full_prompt)
+        num_ctx = min(estimated_tokens, MAX_ALLOWED_TOKENS)
+        logging.info(f"Estimated token usage: {estimated_tokens} → Using num_ctx={num_ctx}")
+        
         initial_payload = {
             "model": MODEL_NAME,
             "system": SYSTEM_PROMPT,
             "prompt": full_prompt,
+            "temperature": 0.0,
             "options": {            
-                "num_ctx": 3500         # max context window size, default 2048 tokens, qwen2.5-coder limit 32,768
+                "num_ctx": num_ctx,       # max context window size, default 2048 tokens, qwen2.5-coder limit 32,768
+                "num_predict": -1         # -1 means no limit on output length
             },
             "stream": False,
         }
 
         try:
-            response = requests.post(OLLAMA_URL, json=initial_payload, timeout=180) # Increased timeout
+            response = requests.post(OLLAMA_URL, json=initial_payload, timeout=1000) # Increased timeout
             response.raise_for_status()
             response_json = response.json()
             full_response = response_json.get("response", "").strip()
@@ -239,7 +248,7 @@ def translate_code(file_id, original_filename, custom_prompt=None, headers=None,
                  retry_prompt_parts.append(f"\n\n===== PREVIOUS COMPILATION ERRORS (Attempt {attempt}) =====\n{previous_sanitized_log}")
                  retry_prompt_parts.append(
                      "\n\nYour previous attempt resulted in the errors shown above ('PREVIOUS COMPILATION ERRORS'). "
-                     "Analyze BOTH the 'CURRENT' and 'PREVIOUS' errors carefully. "
+                     "Analyze BOTH the 'CURRENT' and 'PREVIOUS' errors carefully and fix all errors. "
                      "DO NOT repeat the same mistakes. Identify the root cause and provide a significantly improved version."
                  )
             else:
@@ -248,7 +257,7 @@ def translate_code(file_id, original_filename, custom_prompt=None, headers=None,
             retry_prompt_parts.append(
                  f"\n\nPlease correct the code to fix all current compilation errors. Strictly follow these rules:\n"
                  f"1. Ensure the file contains exactly one top-level public class named \"{pascal_case_name}\".\n"
-                 f"2. Resolve all symbol errors 'cannot find symbol' (missing methods, types, variables, incorrect references) by adding all necessary import statements at the very top.\n"
+                 f"2. If symbol errors occur, e.g. 'cannot find symbol' (missing methods, types, variables, incorrect references), resolve them by adding all necessary import statements and implementing the methods and logic from the original C++ code.\n"
                  f"3. Adjust access modifiers (public, private, protected) correctly.\n"
                  f"4. Fix invalid method declarations, constructors, and return types.\n"
                  f"5. Ensure helper classes are defined correctly (top-level non-public or properly nested).\n"
@@ -261,8 +270,10 @@ def translate_code(file_id, original_filename, custom_prompt=None, headers=None,
                 "model": MODEL_NAME,
                 "system": SYSTEM_PROMPT,
                 "prompt": "".join(retry_prompt_parts),
+                "temperature": 0.0,
                 "options": {            
-                    "num_ctx": 3500         # max context window size, default 2048 tokens, qwen2.5-coder limit 32,768
+                    "num_ctx": num_ctx + 200,         # max context window size, default 2048 tokens, qwen2.5-coder limit 32,768
+                    "num_predict": -1,             # -1 means no limit on output length
                 },
                 "stream": False,
             }
@@ -270,7 +281,7 @@ def translate_code(file_id, original_filename, custom_prompt=None, headers=None,
 
             try:
                 logging.info(f"Sending correction request to Ollama (Attempt {attempt + 2} incoming)...")
-                retry_response = requests.post(OLLAMA_URL, json=retry_payload, timeout=180) # Increased timeout
+                retry_response = requests.post(OLLAMA_URL, json=retry_payload, timeout=600) # Increased timeout
                 retry_response.raise_for_status()
 
                 retry_result = retry_response.json().get("response", "").strip()
@@ -366,6 +377,19 @@ def translate_code(file_id, original_filename, custom_prompt=None, headers=None,
              logging.warning("⚠️ Original C++ file path variable not defined, skipping removal.")
         except Exception as e:
             logging.warning(f"⚠️ Could not remove original .cpp file {cpp_file_path}: {e}")
+        
+        job_counter += 1
+        if job_counter >= UNLOAD_AFTER_JOBS:
+            logging.info("🧹 Cleaning up Ollama session after multiple jobs...")
+            try:
+                response = requests.post("http://ollama:11434/api/unload", json={"model": MODEL_NAME}, timeout=10)
+                if response.status_code == 200:
+                    logging.info("✅ Ollama model unloaded successfully.")
+                else:
+                    logging.warning(f"⚠️ Unload failed: {response.status_code} {response.text}")
+            except Exception as e:
+                logging.warning(f"⚠️ Failed to unload Ollama model: {e}")
+            job_counter = 0  # reset
 
 # --- Notification ---
 from typing import Optional
@@ -557,41 +581,37 @@ def run_pmd_analysis(java_file_path: str) -> str:
         return f"PMD analysis error: {str(e)}"
 
 
-# --- Helper Methods ---
 def add_language_declaration(code: str, language: str, identifier: str) -> str:
-    """Adds a Java package declaration if not already present."""
-    if language.lower() == "java":
-        # Regex to find package declaration, allowing for comments/whitespace before it
-        package_pattern = re.compile(rf"^\s*(//.*?\n|/\*.*?\*/\s*)*package\s+{re.escape(identifier)}\s*;", re.MULTILINE | re.DOTALL)
-        if not package_pattern.search(code):
-            lines = code.splitlines()
-            insert_pos = 0
-            # Find the first line that is not a comment or whitespace
-            for i, line in enumerate(lines):
-                stripped_line = line.strip()
-                if stripped_line and not stripped_line.startswith(('//', '/*')):
-                    # Check if it's an import or class definition - package should go before
-                    if stripped_line.startswith(('import ', 'public ', 'class ', 'interface ', '@')):
-                        insert_pos = i
-                        break
-                    # If it's something else, maybe put package just before it anyway? Or log warning?
-                    # For now, assume first non-comment is where package should go above.
-                    insert_pos = i
-                    break
-                elif not stripped_line: # Keep track of empty lines at the start
-                     insert_pos = i + 1
+    """Ensures a Java package declaration matching `identifier` is present and correct."""
+    if language.lower() != "java":
+        return code  # only handle Java for now
 
+    # Remove any existing package declaration (assumes it's near the top)
+    code = re.sub(r'^\s*package\s+[a-zA-Z0-9_.]+;\s*\n', '', code, flags=re.MULTILINE)
 
-            # Insert package declaration and a blank line
-            lines.insert(insert_pos, f"package {identifier};")
-            # Add blank line only if there isn't one already after insertion point
-            if insert_pos + 1 >= len(lines) or lines[insert_pos + 1].strip():
-                 lines.insert(insert_pos + 1, "")
-            return "\n".join(lines)
-        else:
-            return code # Already has a package declaration
-    else:
-        return code
+    lines = code.splitlines()
+    insert_pos = 0
+
+    # Find where to insert the package declaration (before imports or class/interface/annotation)
+    for i, line in enumerate(lines):
+        stripped_line = line.strip()
+        if stripped_line and not stripped_line.startswith(('//', '/*')):
+            if stripped_line.startswith(('import ', 'public ', 'class ', 'interface ', '@')):
+                insert_pos = i
+                break
+            insert_pos = i
+            break
+        elif not stripped_line:
+            insert_pos = i + 1
+
+    # Insert the new package declaration
+    lines.insert(insert_pos, f"package {identifier};")
+
+    # Add a blank line after if needed
+    if insert_pos + 1 >= len(lines) or lines[insert_pos + 1].strip():
+        lines.insert(insert_pos + 1, "")
+
+    return "\n".join(lines)
 
 def to_pascal_case(s: str) -> str:
     """Converts a string to PascalCase, handling various delimiters and splitting words."""
@@ -633,6 +653,13 @@ def to_pascal_case(s: str) -> str:
         pascal_cased = "Generated_" + pascal_cased
 
     return pascal_cased if pascal_cased else "DefaultClassName"
+
+def estimate_token_count(text: str) -> int:
+    """
+    Estimate the number of tokens for the given text.
+    This is a rough approximation. Adjust multiplier if needed per model.
+    """
+    return int(len(text.split()) * 2.8)  # Conservative estimate
 
 
 def sanitize_log(log_text, max_lines=50, max_chars=5000):

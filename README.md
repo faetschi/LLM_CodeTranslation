@@ -14,13 +14,18 @@ It is designed to be **modular**, **scalable**, and suitable for **enterprise in
 
 ## 📦 Getting Started
 
-### 1. Build all services
+### 1. Set key configuration values in `.env`
+
+    LLM_MODEL=qwen2.5-coder:7b
+    MAX_ALLOWED_TOKENS=32768
+
+### 2. Build all services
 
     
     docker compose build
     
 
-### 2. Pull your preferred model
+### 3. Pull your preferred model
 
     
     docker exec -it ollama ollama pull qwen2.5-coder:7b
@@ -32,13 +37,24 @@ It is designed to be **modular**, **scalable**, and suitable for **enterprise in
     LLM_MODEL=qwen2.5-coder:7b
     
 
-### 3. Start all services
+### 4. Start all services
 
     
     docker compose up
     
 
-### 4. Send a C++ file via `HTTP request`
+### 5. Start translation by sending a C++ file via `HTTP request`
+
+#### POST Request Parameters
+
+| Info| Key | Type | Value |
+|---|-----|-----------|-------------|
+| main file | files | File | legacyCode.cpp |
+| header file | files | File | date.h
+| header file | files | File | currency.h
+| ... | | |
+| *(optional)*|custom_prompt | Text | The previous output missed a static nested helper class called Config. Ensure it’s static and public. |
+| *(WIP)* test file |files | File | test_legacyCode.cpp
 
 #### using POSTMAN
 
@@ -54,63 +70,10 @@ It is designed to be **modular**, **scalable**, and suitable for **enterprise in
     -F "files=@path/to/test_legacyCode.cpp" \
 
 ## 🧱 System Architecture
-```mermaid
----
-config:
-  look: classic
-  theme: redux
-  layout: fixed
----
-flowchart TD
- subgraph User["User"]
-        A1["Uploads C++ and header files via HTTP"]
-  end
- subgraph FastAPI["FastAPI Service"]
-        B1["Accepts file uploads"]
-        B2["Stores files in /uploads/"]
-        B3["Sends job to RabbitMQ"]
-  end
- subgraph MQ["RabbitMQ"]
-        C1[("Message Queue")]
-  end
- subgraph Ollama["Ollama (LLM Engine)"]
-        E1[("LLM Model")]
-  end
- subgraph Worker["Translation Worker"]
-    direction TB
-        D1["Listens for tasks"]
-        D2["Preprocess C++ files"]
-        D3["Create prompt"]
-        Ollama
-        D4["Send prompt to Ollama"]
-        D5["Receive Java output"]
-        D6["Compile with javac"]
-        D7{"Compilation successful?"}
-        D8["Save output to /output/"]
-        D9["Extract error logs"]
-        D10["Generate retry prompt"]
-        D11["Send retry to Ollama"]
-        D12["Receive corrected code"]
-  end
-    A1 --> B1
-    B1 --> B2
-    B2 --> B3
-    B3 --> C1
-    C1 --> D1
-    D1 --> D2
-    D2 --> D3
-    D3 --> D4
-    D4 --> E1
-    E1 --> D5 & D12
-    D5 --> D6
-    D6 --> D7
-    D7 -- Yes --> D8
-    D7 -- No --> D9
-    D9 --> D10
-    D10 --> D11
-    D11 --> E1
-    D12 --> D6
-```
+
+<div style="text-align: center;">
+  <img src="./docs/svg/architecture_dark.svg" alt="System Architecture" style="max-width: 100%; width: 60%; height: auto;" />
+</div>
 
 ## 🔧 Components
 
@@ -154,10 +117,13 @@ flowchart TD
 
 ## 📄 Notes
 
-- Existing files with the same name will be overwritten.
+- Ollama currently has a default context window of 2048 tokens. To mitigate this, a `estimate_token_count` method is used, roughly estimating the tokens needed for a given prompt (currently word count * 2.8).
 
-- Ollama currently supports a context window of 3500 tokens (default: 2048).
+- Filenames are converted to PascalCase to follow Java naming conventions. Adjust as needed for other target languages.
 
+- Language-specific pattern hints in ``output/profiles`` are appended to prompts to improve translation accuracy. Adjust via C++ Hints Extraction as needed.
+
+- Existing translated files in the ``output`` folder will be overwritten when the translation process starts.
 
 ## 🛠 Debugging & Useful Commands
 
@@ -168,6 +134,7 @@ flowchart TD
   docker logs translation_worker --follow   # show logs of specific service
   docker exec -it ollama sh                 # access Ollama container shell
   ollama list                               # list available models
+  docker-compose restart ollama             # restart ollama to regain vram
   ```
 
 - Test the LLM directly:
