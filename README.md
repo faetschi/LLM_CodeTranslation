@@ -10,37 +10,35 @@ It is designed to be **modular**, **scalable**, and suitable for **enterprise in
 - [`FastAPI`](https://fastapi.tiangolo.com/) - Lightweight web framework for REST APIs
 - [`RabbitMQ`](https://www.rabbitmq.com/) - Message queue for asynchronous task handling
 - [`Ollama`](https://ollama.com/) - Local LLM backend
-- `javac`, `PMD` - Java compiler and static code analyzer for post-translation validation
+- `javac` - Java compiler
 
 ## 📦 Getting Started
 
 ### 1. Set key configuration values in `.env`
 
-    LLM_MODEL=qwen2.5-coder:7b
-    MAX_ALLOWED_TOKENS=32768
-
+```env
+LLM_MODEL=qwen2.5-coder:7b  
+MAX_ALLOWED_TOKENS=32768  # model specific
+```
 ### 2. Build all services
 
-    
-    docker compose build
+```bash   
+docker compose build
+```
     
 
 ### 3. Pull your preferred model
 
-    
-    docker exec -it ollama ollama pull qwen2.5-coder:7b
-    
-
- Set the model in `.env`:
-
-    
-    LLM_MODEL=qwen2.5-coder:7b
+```bash
+docker exec -it ollama ollama pull qwen2.5-coder:7b
+```
     
 
 ### 4. Start all services
 
-    
-    docker compose up
+```bash    
+docker compose up
+```
     
 
 ### 5. Start translation by sending a C++ file via `HTTP request`
@@ -104,6 +102,11 @@ It is designed to be **modular**, **scalable**, and suitable for **enterprise in
 - Returns translated Java code
 - Easily replaceable with other local models
 
+### **Model Loader (LLM Preloader)**
+- Waits for Ollama to become available
+- Sends ``warm-up prompt`` to preload the specified LLM model into memory
+- Ensures fast first response by loading model tensors in advance
+
 ## Example POST Request Parameters
 
 | Info| Key | Type | Value |
@@ -111,7 +114,7 @@ It is designed to be **modular**, **scalable**, and suitable for **enterprise in
 | .cpp file | files | File | legacyCode.cpp |
 | .h file | files | File | date.h
 | .h file | files | File | currency.h
-| ... | | |
+| ... | ... | ... | ...
 | *(optional)*|custom_prompt | Text | The previous output missed a static nested helper class called Config. Ensure it’s static and public. |
 | *(WIP)* test_.cpp file |files | File | test_legacyCode.cpp
 
@@ -147,15 +150,15 @@ It is designed to be **modular**, **scalable**, and suitable for **enterprise in
        
 ## 📚 Planned Features
 
-- *(WIP)* *Test Worker*: Auto-generate unit tests post-translation
+- *(WIP)* *Test Worker*: Auto-generate unit tests post-translation for automatic quantitative evaluation
 
 - *(WIP)* PMD Feedback Loop: Use static analysis to improve retry logic
 
 - Support for additional language pairs (e.g., Python ⇄ Java)
 
-- Cloud integration (e.g., PostgreSQL, S3)
+- DB integration (e.g., PostgreSQL)
 
-- Enterprise fine-tuning of models
+- Enterprise fine-tuning of model
 
 - Web UI for job monitoring and status tracking
 

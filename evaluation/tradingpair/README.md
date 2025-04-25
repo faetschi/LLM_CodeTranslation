@@ -13,7 +13,7 @@ A C++ command-line tool that checks whether a given currency pair is tradable on
 
     open MSYS UCTR64 in admin
 
-    cd "/c/Users/Admin/Desktop/FH/Bachelor Thesis/Bachelor Arbeit/Prototype/evaluation"
+    cd "/c/Users/Admin/Desktop/FH/Bachelor Thesis/Bachelor Arbeit/Prototype/evaluation/tradingpair"
 
     make            # builds CLI
     make test       # builds testRunner
